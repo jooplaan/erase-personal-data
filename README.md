@@ -93,22 +93,20 @@ wp erase-personal-data run --skip-forms
 ### WordPress Core
 
 1. **User Emails**: Anonymizes to `user{ID}@example.com` (except user ID 1)
-2. **User Logins**: Changes to `user{ID}` (except user ID 1)
-3. **Display Names**: Changes to `User {ID}` (except user ID 1)
-4. **User Meta**: Clears first name, last name, nickname, and description
-5. **Comment Authors**: Anonymizes all comment author information
-6. **Comment Author Emails**: Changes to `anonymous@example.com`
-7. **Comment Author IPs**: Changes to `0.0.0.0`
-8. **Comment Meta**: Removes personal data from comment metadata
-9. **Password Reset Keys**: Clears all password reset tokens
-10. **Session Tokens**: Removes all user sessions
-11. **User Registration IPs**: Deletes IP addresses from various registration logs
+2. **Display Names**: Changes to `User {ID}` (except user ID 1)
+3. **User Meta**: Clears first name, last name, nickname, and description
+4. **Comment Authors**: Anonymizes all comment author information
+5. **Comment Author Emails**: Changes to `anonymous@example.com`
+6. **Comment Author IPs**: Changes to `0.0.0.0`
+7. **Comment Meta**: Removes personal data from comment metadata
+8. **Password Reset Keys**: Clears all password reset tokens
+9. **Session Tokens**: Removes all user sessions
+10. **User Registration IPs**: Deletes IP addresses from various registration logs
 
 ### E-commerce Plugins
 
 #### WooCommerce
 
-- Customer usernames → `customer{ID}`
 - Customer names → `Customer #{ID}`
 - Customer emails → `customer{ID}@example.com`
 - Customer addresses (postcode, city, state)
@@ -121,6 +119,13 @@ wp erase-personal-data run --skip-forms
 
 - Customer names → `Customer #{ID}`
 - Customer emails → `customer{ID}@example.com`
+
+
+#### Pronamic Pay
+
+- Customer names → `Anonymous Customer`
+- Email addresses → `payment{ID}@example.com`
+- Contact details (phone, company, address, city, zip, country)
 
 
 ### Form Builder Plugins
@@ -201,6 +206,7 @@ The command automatically detects and sanitizes data from these plugins if insta
 |--------|----------------|
 | **WooCommerce** | Customers, orders, billing, shipping, subscriptions |
 | **Easy Digital Downloads** | Customer information |
+| **Pronamic Pay** | Payment customer data and contact details |
 | **Contact Form 7** (Flamingo) | Form submissions |
 | **Gravity Forms** | Entries and field data |
 | **Ninja Forms** | Submissions |

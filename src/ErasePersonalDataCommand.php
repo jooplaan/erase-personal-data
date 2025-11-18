@@ -155,11 +155,6 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
                 SET user_email = CONCAT('user', ID, '@example.com')
                 WHERE ID > 1
             ",
-            'Anonymize user login names' => "
-                UPDATE {$wpdb->users}
-                SET user_login = CONCAT('user', ID)
-                WHERE ID > 1
-            ",
             'Clear user display names' => "
                 UPDATE {$wpdb->users}
                 SET display_name = CONCAT('User ', ID)
@@ -193,10 +188,6 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
         // WooCommerce customer data anonymization
         $wc_customers_table = $wpdb->prefix . 'wc_customer_lookup';
         if ( $this->table_exists( $wc_customers_table ) ) {
-            $queries['Anonymize WooCommerce customer usernames'] = "
-                UPDATE {$wc_customers_table}
-                SET username = CONCAT('customer', customer_id)
-            ";
             $queries['Anonymize WooCommerce customer names'] = "
                 UPDATE {$wc_customers_table}
                 SET first_name = 'Customer',
@@ -435,6 +426,31 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
             DELETE FROM {$wpdb->usermeta}
             WHERE meta_key = 'session_tokens'
         ";
+
+        // Pronamic Pay payment data
+        $pronamic_payments_table = $wpdb->prefix . 'pronamic_pay_payments';
+        if ( $this->table_exists( $pronamic_payments_table ) ) {
+            $queries['Anonymize Pronamic Pay customer names'] = "
+                UPDATE {$pronamic_payments_table}
+                SET customer_name = 'Anonymous Customer'
+            ";
+            $queries['Anonymize Pronamic Pay email addresses'] = "
+                UPDATE {$pronamic_payments_table}
+                SET email = CONCAT('payment', id, '@example.com')
+            ";
+            $queries['Clear Pronamic Pay contact details'] = "
+                UPDATE {$pronamic_payments_table}
+                SET telephone_number = '',
+                    company_name = '',
+                    address = '',
+                    city = '',
+                    zip = '',
+                    country = ''
+                WHERE telephone_number IS NOT NULL
+                   OR company_name IS NOT NULL
+                   OR address IS NOT NULL
+            ";
+        }
 
         return $queries;
     }
