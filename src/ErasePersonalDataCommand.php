@@ -260,6 +260,14 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
                     OR LENGTH(meta_value) > 5
                 )
             ";
+            
+            $queries['Clear Gravity Forms name fields'] = "
+                UPDATE {$gf_entry_meta_table}
+                SET meta_value = '[REDACTED]'
+                WHERE meta_key LIKE '%.3'
+                   OR meta_key LIKE '%.4'
+                   OR meta_key LIKE '%.6'
+            ";
         }
 
         // Ninja Forms submissions
