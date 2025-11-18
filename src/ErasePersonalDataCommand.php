@@ -218,6 +218,126 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
                 }
             }
         }
+
+        // Handle Pronamic Pay JSON sanitization separately (can't be done with simple SQL)
+        $this->sanitize_pronamic_pay_json( $dry_run );
+    }
+
+    /**
+     * Sanitize personal data from Pronamic Pay JSON in post_content.
+     *
+     * @param bool $dry_run Whether to run in dry-run mode (preview only).
+     */
+    private function sanitize_pronamic_pay_json( $dry_run = false ) {
+        global $wpdb;
+
+        WP_CLI::log( "Sanitizing Pronamic Pay JSON data in post_content..." );
+
+        // Get all Pronamic payment posts
+        $posts = $wpdb->get_results( 
+            "SELECT ID, post_content FROM {$wpdb->posts} 
+            WHERE post_type = 'pronamic_payment' 
+            AND post_content LIKE '%\"customer\"%'"
+        );
+
+        if ( empty( $posts ) ) {
+            WP_CLI::log( "    No Pronamic Pay posts with JSON data found." );
+            return;
+        }
+
+        $count = 0;
+        foreach ( $posts as $post ) {
+            $json_data = json_decode( $post->post_content, true );
+            
+            if ( ! $json_data ) {
+                continue;
+            }
+
+            // Sanitize customer data
+            if ( isset( $json_data['customer'] ) ) {
+                if ( isset( $json_data['customer']['name'] ) ) {
+                    $json_data['customer']['name'] = [
+                        'first_name' => '[REDACTED]',
+                        'last_name' => '[REDACTED]'
+                    ];
+                }
+                if ( isset( $json_data['customer']['email'] ) ) {
+                    $json_data['customer']['email'] = 'redacted@example.com';
+                }
+                if ( isset( $json_data['customer']['phone'] ) ) {
+                    $json_data['customer']['phone'] = '';
+                }
+                if ( isset( $json_data['customer']['ip_address'] ) ) {
+                    $json_data['customer']['ip_address'] = '0.0.0.0';
+                }
+            }
+
+            // Sanitize billing address
+            if ( isset( $json_data['billing_address'] ) ) {
+                if ( isset( $json_data['billing_address']['name'] ) ) {
+                    $json_data['billing_address']['name'] = [
+                        'first_name' => '[REDACTED]',
+                        'last_name' => '[REDACTED]'
+                    ];
+                }
+                if ( isset( $json_data['billing_address']['email'] ) ) {
+                    $json_data['billing_address']['email'] = 'redacted@example.com';
+                }
+                if ( isset( $json_data['billing_address']['phone'] ) ) {
+                    $json_data['billing_address']['phone'] = '';
+                }
+                if ( isset( $json_data['billing_address']['line_1'] ) ) {
+                    $json_data['billing_address']['line_1'] = '';
+                }
+                if ( isset( $json_data['billing_address']['street_name'] ) ) {
+                    $json_data['billing_address']['street_name'] = '';
+                }
+                if ( isset( $json_data['billing_address']['house_number'] ) ) {
+                    $json_data['billing_address']['house_number'] = [];
+                }
+                if ( isset( $json_data['billing_address']['postal_code'] ) ) {
+                    $json_data['billing_address']['postal_code'] = '';
+                }
+                if ( isset( $json_data['billing_address']['city'] ) ) {
+                    $json_data['billing_address']['city'] = '';
+                }
+            }
+
+            // Sanitize shipping address
+            if ( isset( $json_data['shipping_address'] ) && is_array( $json_data['shipping_address'] ) ) {
+                if ( isset( $json_data['shipping_address']['name'] ) ) {
+                    $json_data['shipping_address']['name'] = [];
+                }
+                if ( isset( $json_data['shipping_address']['line_1'] ) ) {
+                    $json_data['shipping_address']['line_1'] = '';
+                }
+                if ( isset( $json_data['shipping_address']['city'] ) ) {
+                    $json_data['shipping_address']['city'] = '';
+                }
+                if ( isset( $json_data['shipping_address']['postal_code'] ) ) {
+                    $json_data['shipping_address']['postal_code'] = '';
+                }
+            }
+
+            if ( ! $dry_run ) {
+                // Update the post with sanitized JSON
+                $wpdb->update(
+                    $wpdb->posts,
+                    [ 'post_content' => wp_json_encode( $json_data ) ],
+                    [ 'ID' => $post->ID ],
+                    [ '%s' ],
+                    [ '%d' ]
+                );
+            }
+
+            $count++;
+        }
+
+        if ( $dry_run ) {
+            WP_CLI::log( "    [DRY RUN] Would sanitize JSON data in {$count} Pronamic Pay posts" );
+        } else {
+            WP_CLI::log( "    Sanitized JSON data in {$count} Pronamic Pay posts" );
+        }
     }
 
     /**
