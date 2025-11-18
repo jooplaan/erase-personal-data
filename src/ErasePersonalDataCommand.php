@@ -654,6 +654,24 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
                 '_pronamic_payment_country'
             )
         ";
+        $queries['Clear all Pronamic Pay personal data from postmeta'] = "
+            DELETE FROM {$wpdb->postmeta}
+            WHERE post_id IN (
+                SELECT ID FROM {$wpdb->posts} WHERE post_type = 'pronamic_payment'
+            )
+            AND meta_key LIKE '_pronamic_payment_%'
+            AND meta_key NOT IN (
+                '_pronamic_payment_id',
+                '_pronamic_payment_status',
+                '_pronamic_payment_currency',
+                '_pronamic_payment_amount',
+                '_pronamic_payment_method',
+                '_pronamic_payment_config_id',
+                '_pronamic_payment_gateway',
+                '_pronamic_payment_subscription_id',
+                '_pronamic_payment_transaction_id'
+            )
+        ";
 
         // User Registration logs (various plugins)
         $queries['Clear user registration IP addresses'] = "
