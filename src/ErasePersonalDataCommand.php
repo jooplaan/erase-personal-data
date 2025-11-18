@@ -135,6 +135,24 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
 
         $dry_run = isset( $assoc_args['dry-run'] );
         $skip_forms = isset( $assoc_args['skip-forms'] );
+        $is_multisite = is_multisite();
+
+        // Display environment information
+        if ( $is_multisite ) {
+            $site_url = get_site_url();
+            $blog_id = get_current_blog_id();
+            WP_CLI::log( WP_CLI::colorize( "%GMultisite detected%n - Operating on site: {$site_url} (ID: {$blog_id})" ) );
+            
+            // Warn if no --url flag was provided (they're on the main site by default)
+            if ( ! isset( $assoc_args['url'] ) && $blog_id === 1 ) {
+                WP_CLI::warning( "You're on the main site. To sanitize a different site, use: wp --url=<site-url> erase-personal-data run" );
+                WP_CLI::log( "To see all sites, run: wp site list" );
+                WP_CLI::log( "" );
+            }
+        } else {
+            WP_CLI::log( WP_CLI::colorize( "%GSingle site%n - Operating on: " . get_site_url() ) );
+        }
+        WP_CLI::log( "" );
 
         if ( $dry_run ) {
             WP_CLI::warning( 'DRY RUN MODE: No changes will be made to the database.' );
