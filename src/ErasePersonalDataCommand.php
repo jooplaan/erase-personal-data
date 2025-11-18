@@ -6,7 +6,42 @@ use WP_CLI;
 use WP_CLI_Command;
 
 /**
- * Erases personal data from the current WordPress database.
+ * Erase personal data from WordPress database.
+ *
+ * This command helps you safely sanitize your WordPress database by anonymizing
+ * personal data from WordPress core and 20+ popular plugins including WooCommerce,
+ * Gravity Forms, WPForms, MailPoet, Pronamic Pay, and more.
+ *
+ * It provides a best-effort sanitization of common personal data including:
+ * - User emails, names, and metadata
+ * - E-commerce customer information and orders
+ * - Form submissions and entries
+ * - Comment author details
+ * - Email marketing subscriber data
+ * - And much more
+ *
+ * ## AVAILABLE COMMANDS
+ *
+ * run - Erase personal data from the current WordPress database
+ *
+ * ## EXAMPLES
+ *
+ *     # See detailed help for the run subcommand
+ *     wp help erase-personal-data run
+ *
+ *     # Preview what would be erased
+ *     wp erase-personal-data run --dry-run
+ *
+ *     # Erase data with confirmation
+ *     wp erase-personal-data run
+ *
+ * ## WARNING
+ *
+ * This command makes IRREVERSIBLE changes! Always backup first.
+ * This is a best-effort tool and does not guarantee complete removal
+ * of all personal data. Manually verify results after running.
+ *
+ * @package wp-cli/erase-personal-data
  */
 class ErasePersonalDataCommand extends WP_CLI_Command {
 
