@@ -13,30 +13,76 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
     /**
      * Erase personal data from the current WordPress database.
      *
+     * This command sanitizes personal data from WordPress core and 20+ popular
+     * plugins including WooCommerce, Gravity Forms, WPForms, MailPoet, and more.
+     * It anonymizes emails, names, IP addresses, and other personal information.
+     *
      * ## OPTIONS
      *
      * [--yes]
-     * : Skip the confirmation prompt and proceed with data erasure.
+     * : Skip the confirmation prompt and proceed with data erasure immediately.
+     * By default, you'll be asked to confirm before any changes are made.
      *
      * [--dry-run]
-     * : Preview what would be erased without making any actual changes.
+     * : Preview mode. Shows what would be erased without making any actual
+     * database changes. Use this to verify what will be sanitized before
+     * running the actual command.
      *
      * [--skip-forms]
-     * : Skip erasing form submissions (Gravity Forms, WPForms, etc.). Only erase other personal data.
+     * : Skip erasing form submissions from form builder plugins (Gravity Forms,
+     * WPForms, Ninja Forms, Contact Form 7 Flamingo). Only erase other personal
+     * data like user information, comments, WooCommerce data, etc.
      *
      * ## EXAMPLES
      *
-     *     # Erase personal data with confirmation prompt
+     *     # Run with confirmation prompt (recommended for first use)
      *     wp erase-personal-data run
      *
-     *     # Erase personal data without confirmation prompt
-     *     wp erase-personal-data run --yes
-     *
-     *     # Preview what would be erased without making changes
+     *     # Preview what will be erased without making changes
      *     wp erase-personal-data run --dry-run
      *
-     *     # Erase personal data but skip form submissions
+     *     # Erase data without confirmation prompt
+     *     wp erase-personal-data run --yes
+     *
+     *     # Erase data but preserve form submissions
      *     wp erase-personal-data run --skip-forms
+     *
+     *     # Combine flags - preview with skipping forms
+     *     wp erase-personal-data run --dry-run --skip-forms
+     *
+     * ## WHAT GETS SANITIZED
+     *
+     * WordPress Core:
+     * - User emails, display names, metadata (first/last name, description)
+     * - Comment authors, emails, IP addresses
+     * - Password reset keys, session tokens
+     *
+     * E-commerce Plugins:
+     * - WooCommerce: customers, orders, billing/shipping addresses
+     * - Easy Digital Downloads: customer information
+     * - Pronamic Pay: customer data and payment records
+     *
+     * Form Plugins (skipped with --skip-forms):
+     * - Gravity Forms: entries, field values, IPs (modern & legacy tables)
+     * - WPForms: entries, field values, IPs
+     * - Ninja Forms: form submissions
+     * - Contact Form 7: Flamingo submissions
+     *
+     * Membership & Community:
+     * - MemberPress, BuddyPress/BuddyBoss, WP User Manager, bbPress
+     *
+     * Email Marketing:
+     * - Newsletter, MailPoet, WP Mail SMTP Pro
+     *
+     * And more! See full list at:
+     * https://github.com/jooplaan/erase-personal-data#supported-plugins-reference
+     *
+     * ## WARNING
+     *
+     * This command makes IRREVERSIBLE changes to your database!
+     * - Always backup your database before running: wp db export backup.sql
+     * - Test on a staging environment first
+     * - Use --dry-run to preview changes before running
      *
      * @when after_wp_load
      */
