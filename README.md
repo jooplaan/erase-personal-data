@@ -13,12 +13,19 @@ This command helps you safely sanitize your WordPress database by:
 
 Perfect for GDPR compliance, creating safe development environments from production data, and preparing databases for client handoffs.
 
+## Requirements
+
+- PHP 7.4 or higher
+- WP-CLI installed
+- MySQL/MariaDB command-line tools
+- WordPress installation (single site or multisite)
+
 ## Installation
 
 ### Method 1: Install stable release (Recommended)
 
 ```bash
-wp package install jooplaan/erase-personal-data:1.5.1
+wp package install jooplaan/erase-personal-data:1.5.2
 ```
 
 Or install latest from the main branch (for testing):
@@ -78,37 +85,6 @@ For testing in a specific WordPress installation:
      - vendor/wp-cli/erase-personal-data/command.php
    ```
 
-## Requirements
-
-- PHP 7.4 or higher
-- WP-CLI installed
-- MySQL/MariaDB command-line tools
-- WordPress installation (single site or multisite)
-
-## Multisite Support
-
-✅ **Fully multisite-compatible!**
-
-When running on a WordPress multisite network:
-
-- **User data** is only anonymized for users who belong to the current site
-- **Plugin data** (WooCommerce, forms, etc.) is site-specific by default
-- **Comments** are already site-specific in WordPress multisite
-
-To sanitize a specific site in a multisite network:
-
-```bash
-# Switch to the site you want to sanitize
-wp --url=site2.example.com erase-personal-data run --dry-run
-
-# Or use the site ID
-wp --url=2 erase-personal-data run --dry-run
-```
-
-At runtime, the command reports whether it detected single site or multisite and, on multisite, which site URL/ID is being modified. If you’re on the main site without `--url`, it suggests using `--url=<site>` and `wp site list` to discover site URLs.
-
-**Note:** In multisite, users are shared across the network. The command intelligently targets only users associated with the current site.
-
 ## Usage
 
 ### Basic Command
@@ -118,8 +94,6 @@ wp erase-personal-data run [--yes] [--dry-run] [--skip-forms]
 ```
 
 ### Parameters
-
- 
 
 #### `--yes` (optional)
 
@@ -183,6 +157,30 @@ wp erase-personal-data run --skip-forms
 wp erase-personal-data run --dry-run --skip-forms
 ```
 
+## Multisite Support
+
+✅ **Fully multisite-compatible!**
+
+When running on a WordPress multisite network:
+
+- **User data** is only anonymized for users who belong to the current site
+- **Plugin data** (WooCommerce, forms, etc.) is site-specific by default
+- **Comments** are already site-specific in WordPress multisite
+
+To sanitize a specific site in a multisite network:
+
+```bash
+# Switch to the site you want to sanitize
+wp --url=site2.example.com erase-personal-data run --dry-run
+
+# Or use the site ID
+wp --url=2 erase-personal-data run --dry-run
+```
+
+At runtime, the command reports whether it detected single site or multisite and, on multisite, which site URL/ID is being modified. If you’re on the main site without `--url`, it suggests using `--url=<site>` and `wp site list` to discover site URLs.
+
+**Note:** In multisite, users are shared across the network. The command intelligently targets only users associated with the current site.
+
 ## What Data Gets Sanitized
 
 ### WordPress Core
@@ -217,7 +215,6 @@ This two-pronged approach ensures complete removal of personal data from both th
 ### Supported Plugins (20+)
 
 The command automatically detects installed plugins and sanitizes their data:
-
 
 **E-commerce:**
 
@@ -280,6 +277,9 @@ wp erase-personal-data run --yes
 
 # 4. Verify results
 wp db query "SELECT user_email FROM wp_users LIMIT 5"
+
+# 5. Delete database to no longer have the data on your computer
+rm backup-YYMMDD.sql
 ```
 
 ## Contributing
@@ -460,7 +460,20 @@ MIT License
 - **Issues**: [GitHub Issues](https://github.com/jooplaan/erase-personal-data/issues)
 - **Contribute**: [Pull Requests Welcome](https://github.com/jooplaan/erase-personal-data/pulls)
 
+### Updating
+
+To update to the latest version of this command, when you have it already installed, use the standard update command:
+
+```bash
+wp packages update
+```
+
 ## Changelog
+
+### Version 1.5.0
+
+- Support for WordPress multisites
+- Added more plugins
 
 ### Version 1.0.0
 
