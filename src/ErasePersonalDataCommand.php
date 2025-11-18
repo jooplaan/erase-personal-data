@@ -219,124 +219,46 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
             }
         }
 
-        // Handle Pronamic Pay JSON sanitization separately (can't be done with simple SQL)
-        $this->sanitize_pronamic_pay_json( $dry_run );
+        // Handle Pronamic Pay post deletion separately
+        $this->delete_pronamic_pay_posts( $dry_run );
     }
 
     /**
-     * Sanitize personal data from Pronamic Pay JSON in post_content.
+     * Delete all Pronamic Pay payment posts.
      *
      * @param bool $dry_run Whether to run in dry-run mode (preview only).
      */
-    private function sanitize_pronamic_pay_json( $dry_run = false ) {
+    private function delete_pronamic_pay_posts( $dry_run = false ) {
         global $wpdb;
 
-        WP_CLI::log( "Sanitizing Pronamic Pay JSON data in post_content..." );
+        WP_CLI::log( "Deleting Pronamic Pay payment posts..." );
 
-        // Get all Pronamic payment posts
-        $posts = $wpdb->get_results( 
-            "SELECT ID, post_content FROM {$wpdb->posts} 
-            WHERE post_type = 'pronamic_payment' 
-            AND post_content LIKE '%\"customer\"%'"
+        // Count posts first
+        $count = $wpdb->get_var( 
+            "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'pronamic_payment'"
         );
 
-        if ( empty( $posts ) ) {
-            WP_CLI::log( "    No Pronamic Pay posts with JSON data found." );
+        if ( $count == 0 ) {
+            WP_CLI::log( "    No Pronamic Pay posts found." );
             return;
         }
 
-        $count = 0;
-        foreach ( $posts as $post ) {
-            $json_data = json_decode( $post->post_content, true );
-            
-            if ( ! $json_data ) {
-                continue;
-            }
-
-            // Sanitize customer data
-            if ( isset( $json_data['customer'] ) ) {
-                if ( isset( $json_data['customer']['name'] ) ) {
-                    $json_data['customer']['name'] = [
-                        'first_name' => '[REDACTED]',
-                        'last_name' => '[REDACTED]'
-                    ];
-                }
-                if ( isset( $json_data['customer']['email'] ) ) {
-                    $json_data['customer']['email'] = 'redacted@example.com';
-                }
-                if ( isset( $json_data['customer']['phone'] ) ) {
-                    $json_data['customer']['phone'] = '';
-                }
-                if ( isset( $json_data['customer']['ip_address'] ) ) {
-                    $json_data['customer']['ip_address'] = '0.0.0.0';
-                }
-            }
-
-            // Sanitize billing address
-            if ( isset( $json_data['billing_address'] ) ) {
-                if ( isset( $json_data['billing_address']['name'] ) ) {
-                    $json_data['billing_address']['name'] = [
-                        'first_name' => '[REDACTED]',
-                        'last_name' => '[REDACTED]'
-                    ];
-                }
-                if ( isset( $json_data['billing_address']['email'] ) ) {
-                    $json_data['billing_address']['email'] = 'redacted@example.com';
-                }
-                if ( isset( $json_data['billing_address']['phone'] ) ) {
-                    $json_data['billing_address']['phone'] = '';
-                }
-                if ( isset( $json_data['billing_address']['line_1'] ) ) {
-                    $json_data['billing_address']['line_1'] = '';
-                }
-                if ( isset( $json_data['billing_address']['street_name'] ) ) {
-                    $json_data['billing_address']['street_name'] = '';
-                }
-                if ( isset( $json_data['billing_address']['house_number'] ) ) {
-                    $json_data['billing_address']['house_number'] = [];
-                }
-                if ( isset( $json_data['billing_address']['postal_code'] ) ) {
-                    $json_data['billing_address']['postal_code'] = '';
-                }
-                if ( isset( $json_data['billing_address']['city'] ) ) {
-                    $json_data['billing_address']['city'] = '';
-                }
-            }
-
-            // Sanitize shipping address
-            if ( isset( $json_data['shipping_address'] ) && is_array( $json_data['shipping_address'] ) ) {
-                if ( isset( $json_data['shipping_address']['name'] ) ) {
-                    $json_data['shipping_address']['name'] = [];
-                }
-                if ( isset( $json_data['shipping_address']['line_1'] ) ) {
-                    $json_data['shipping_address']['line_1'] = '';
-                }
-                if ( isset( $json_data['shipping_address']['city'] ) ) {
-                    $json_data['shipping_address']['city'] = '';
-                }
-                if ( isset( $json_data['shipping_address']['postal_code'] ) ) {
-                    $json_data['shipping_address']['postal_code'] = '';
-                }
-            }
-
-            if ( ! $dry_run ) {
-                // Update the post with sanitized JSON
-                $wpdb->update(
-                    $wpdb->posts,
-                    [ 'post_content' => wp_json_encode( $json_data ) ],
-                    [ 'ID' => $post->ID ],
-                    [ '%s' ],
-                    [ '%d' ]
-                );
-            }
-
-            $count++;
-        }
-
         if ( $dry_run ) {
-            WP_CLI::log( "    [DRY RUN] Would sanitize JSON data in {$count} Pronamic Pay posts" );
+            WP_CLI::log( "    [DRY RUN] Would delete {$count} Pronamic Pay payment posts" );
         } else {
-            WP_CLI::log( "    Sanitized JSON data in {$count} Pronamic Pay posts" );
+            // Delete all pronamic_payment posts
+            $wpdb->query( 
+                "DELETE FROM {$wpdb->posts} WHERE post_type = 'pronamic_payment'"
+            );
+            
+            // Clean up orphaned postmeta
+            $wpdb->query(
+                "DELETE pm FROM {$wpdb->postmeta} pm
+                LEFT JOIN {$wpdb->posts} p ON pm.post_id = p.ID
+                WHERE p.ID IS NULL"
+            );
+            
+            WP_CLI::log( "    Deleted {$count} Pronamic Pay payment posts" );
         }
     }
 
@@ -748,50 +670,8 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
             ";
         }
 
-        // Pronamic Pay payment post meta (custom post type data)
-        $queries['Anonymize Pronamic Pay payment post meta'] = "
-            UPDATE {$wpdb->postmeta}
-            SET meta_value = 'Anonymous Customer'
-            WHERE meta_key = '_pronamic_payment_customer_name'
-        ";
-        $queries['Clear Pronamic Pay email in post meta'] = "
-            UPDATE {$wpdb->postmeta} pm
-            INNER JOIN {$wpdb->posts} p ON pm.post_id = p.ID
-            SET pm.meta_value = CONCAT('payment', p.ID, '@example.com')
-            WHERE p.post_type = 'pronamic_payment'
-            AND pm.meta_key = '_pronamic_payment_email'
-        ";
-        $queries['Clear Pronamic Pay contact post meta'] = "
-            DELETE FROM {$wpdb->postmeta}
-            WHERE post_id IN (
-                SELECT ID FROM {$wpdb->posts} WHERE post_type = 'pronamic_payment'
-            )
-            AND meta_key IN (
-                '_pronamic_payment_telephone_number',
-                '_pronamic_payment_address',
-                '_pronamic_payment_city',
-                '_pronamic_payment_zip',
-                '_pronamic_payment_country'
-            )
-        ";
-        $queries['Clear all Pronamic Pay personal data from postmeta'] = "
-            DELETE FROM {$wpdb->postmeta}
-            WHERE post_id IN (
-                SELECT ID FROM {$wpdb->posts} WHERE post_type = 'pronamic_payment'
-            )
-            AND meta_key LIKE '_pronamic_payment_%'
-            AND meta_key NOT IN (
-                '_pronamic_payment_id',
-                '_pronamic_payment_status',
-                '_pronamic_payment_currency',
-                '_pronamic_payment_amount',
-                '_pronamic_payment_method',
-                '_pronamic_payment_config_id',
-                '_pronamic_payment_gateway',
-                '_pronamic_payment_subscription_id',
-                '_pronamic_payment_transaction_id'
-            )
-        ";
+        // Note: Pronamic Pay payment posts are deleted entirely (see delete_pronamic_pay_posts method)
+        // This includes all post content and postmeta automatically
 
         // User Registration logs (various plugins)
         $queries['Clear user registration IP addresses'] = "
