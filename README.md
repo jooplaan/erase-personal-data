@@ -199,11 +199,20 @@ wp erase-personal-data run --dry-run --skip-forms
 
 ### Pronamic Pay
 
-- Deletes all `pronamic_payment` custom post type posts (removes any JSON with personal data in `post_content`)
-- Automatically cleans up related post meta
-- Keeps the separate `wp_pronamic_pay_payments` table but anonymizes customer fields (names, email, phone, address)
+**Payment Posts (Deleted):**
 
-This approach is simpler, faster, and ensures no residual personal data remains inside payment post JSON while preserving essential payment records in the dedicated table.
+- Deletes all `pronamic_payment` custom post type posts entirely
+- Automatically cleans up orphaned postmeta (including any `_pronamic_payment_*` fields)
+- Removes all JSON customer data stored in `post_content`
+
+**Payments Table (Anonymized):**
+
+- Anonymizes customer names in `wp_pronamic_pay_payments` table → `'Anonymous Customer'`
+- Anonymizes emails → `payment{ID}@example.com`
+- Clears contact details (phone, company name, address, city, zip, country)
+- Preserves payment amounts, status, transaction IDs, and other non-personal technical data
+
+This two-pronged approach ensures complete removal of personal data from both the WordPress posts system and the dedicated Pronamic Pay database table.
 
 ### Supported Plugins (20+)
 
@@ -214,7 +223,7 @@ The command automatically detects installed plugins and sanitizes their data:
 
 - WooCommerce (customers, orders, billing, shipping, subscriptions)
 - Easy Digital Downloads
-- Pronamic Pay
+- Pronamic Pay (deletes payment posts, anonymizes payments table)
 
 **Forms:**
 
@@ -405,7 +414,7 @@ if ( $this->table_exists( $custom_plugin_users ) ) {
 |--------|---------------------|
 | **WooCommerce** | Customers, orders, billing addresses, shipping addresses, phone numbers, subscriptions |
 | **Easy Digital Downloads** | Customer names and emails |
-| **Pronamic Pay** | Deletes `pronamic_payment` posts; anonymizes `wp_pronamic_pay_payments` customer fields |
+| **Pronamic Pay** | Deletes all `pronamic_payment` posts + orphaned meta; anonymizes `wp_pronamic_pay_payments` (names, emails, addresses) |
 | **Contact Form 7** (Flamingo) | All form submissions (deleted) |
 | **Gravity Forms** | Entry IPs, user agents, all form field values (modern & legacy tables) |
 | **Ninja Forms** | All submissions (deleted) |
