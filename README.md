@@ -174,12 +174,16 @@ The command automatically detects installed plugins and sanitizes their data:
 
 ⚠️ **Warning**: This command makes **irreversible changes** to your database.
 
+⚠️ **Important**: This command performs a **best-effort sanitization** of common WordPress plugins and core data. It does **not guarantee** removal of ALL personal data from your database. Some plugins may store data in custom tables or unusual locations not covered by this tool.
+
 ### Before Running
 
 1. ✅ **Always backup your database** before importing
 2. ✅ Test on a development environment first
 3. ✅ Verify you have proper authorization
 4. ✅ Review the sanitization queries for your use case
+5. ✅ **Manually verify** that sensitive data has been properly sanitized
+6. ✅ Check for plugins not yet supported and contribute support for them!
 
 ### Recommended Workflow
 
@@ -303,7 +307,15 @@ if ( $this->table_exists( $custom_plugin_users ) ) {
 
 - Plugin tables may use different naming conventions
 - Some plugins store data in custom tables not yet supported
-- Consider contributing support for that plugin!
+- **We welcome your contributions!** If you find a plugin that stores personal data not covered by this tool, please open an issue or submit a pull request to add support
+
+### Missing Plugin Support?
+
+**Help us improve!** If you discover personal data that isn't being sanitized:
+
+1. Open a [GitHub Issue](https://github.com/jooplaan/erase-personal-data/issues) describing what data was missed
+2. Submit a [Pull Request](https://github.com/jooplaan/erase-personal-data/pulls) adding support for that plugin (see [Contributing](#contributing) section)
+3. Share your sanitization queries with the community
 
 ### Permission Errors
 
@@ -366,6 +378,7 @@ MIT License
 ## Changelog
 
 ### Version 1.0.0
+
 - Initial release
 - WordPress core data sanitization
 - Support for 20+ popular plugins
@@ -375,4 +388,4 @@ MIT License
 
 ---
 
-**Disclaimer**: This tool is provided as-is. Always test thoroughly and maintain backups. You are responsible for ensuring this tool meets your specific privacy and legal requirements.
+**Disclaimer**: This tool is provided as-is and performs **best-effort sanitization** of personal data. It does not guarantee complete removal of all personal data from your database. Always test thoroughly, maintain backups, and manually verify that sensitive data has been properly sanitized. You are responsible for ensuring this tool meets your specific privacy and legal requirements. If you discover personal data that isn't being sanitized, please contribute improvements via pull requests or open an issue on GitHub.
