@@ -21,6 +21,9 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
      * [--dry-run]
      * : Preview what would be erased without making any actual changes.
      *
+     * [--skip-forms]
+     * : Skip erasing form submissions (Gravity Forms, WPForms, etc.). Only erase other personal data.
+     *
      * ## EXAMPLES
      *
      *     # Erase personal data with confirmation prompt
@@ -32,12 +35,16 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
      *     # Preview what would be erased without making changes
      *     wp erase-personal-data run --dry-run
      *
+     *     # Erase personal data but skip form submissions
+     *     wp erase-personal-data run --skip-forms
+     *
      * @when after_wp_load
      */
     public function run( $args, $assoc_args ) {
         global $wpdb;
 
         $dry_run = isset( $assoc_args['dry-run'] );
+        $skip_forms = isset( $assoc_args['skip-forms'] );
 
         if ( $dry_run ) {
             WP_CLI::warning( 'DRY RUN MODE: No changes will be made to the database.' );
@@ -51,7 +58,10 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
 
         // Erase personal data
         WP_CLI::log( "Starting personal data erasure..." );
-        $this->erase_personal_data( $dry_run );
+        if ( $skip_forms ) {
+            WP_CLI::log( "Skipping form submissions as requested." );
+        }
+        $this->erase_personal_data( $dry_run, $skip_forms );
         
         if ( $dry_run ) {
             WP_CLI::success( "Dry run completed. No data was actually erased." );
@@ -64,12 +74,13 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
      * Erase personal data from the database.
      *
      * @param bool $dry_run Whether to run in dry-run mode (preview only).
+     * @param bool $skip_forms Whether to skip form submission erasure.
      */
-    private function erase_personal_data( $dry_run = false ) {
+    private function erase_personal_data( $dry_run = false, $skip_forms = false ) {
         global $wpdb;
 
         // Array of queries to erase personal data
-        $queries = $this->get_sanitization_queries();
+        $queries = $this->get_sanitization_queries( $skip_forms );
         $total = count( $queries );
         $current = 0;
 
@@ -132,9 +143,10 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
     /**
      * Get array of sanitization queries to erase personal data.
      *
+     * @param bool $skip_forms Whether to skip form submission erasure.
      * @return array Associative array of description => SQL query.
      */
-    private function get_sanitization_queries() {
+    private function get_sanitization_queries( $skip_forms = false ) {
         global $wpdb;
 
         $queries = [
@@ -232,72 +244,69 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
         ";
 
         // Contact Form 7 - Flamingo plugin (stores form submissions)
-        $flamingo_table = $wpdb->prefix . 'flamingo_inbound';
-        if ( $this->table_exists( $flamingo_table ) ) {
-            $queries['Clear Flamingo contact form submissions'] = "
-                DELETE FROM {$flamingo_table}
-            ";
+        if ( ! $skip_forms ) {
+            $flamingo_table = $wpdb->prefix . 'flamingo_inbound';
+            if ( $this->table_exists( $flamingo_table ) ) {
+                $queries['Clear Flamingo contact form submissions'] = "
+                    DELETE FROM {$flamingo_table}
+                ";
+            }
         }
 
         // Gravity Forms entries
-        $gf_entry_table = $wpdb->prefix . 'gf_entry';
-        if ( $this->table_exists( $gf_entry_table ) ) {
-            $queries['Anonymize Gravity Forms entry IPs'] = "
-                UPDATE {$gf_entry_table}
-                SET ip = '0.0.0.0',
-                    source_url = '',
-                    user_agent = ''
-            ";
-            
-            $gf_entry_meta_table = $wpdb->prefix . 'gf_entry_meta';
-            $queries['Clear Gravity Forms personal data fields'] = "
-                UPDATE {$gf_entry_meta_table}
-                SET meta_value = '[REDACTED]'
-                WHERE meta_key IN ('1', '2', '3', '4', '5')
-                AND (
-                    meta_value LIKE '%@%'
-                    OR meta_value REGEXP '^[0-9]{3}[-. ]?[0-9]{3}[-. ]?[0-9]{4}$'
-                    OR LENGTH(meta_value) > 5
-                )
-            ";
-            
-            $queries['Clear Gravity Forms name fields'] = "
-                UPDATE {$gf_entry_meta_table}
-                SET meta_value = '[REDACTED]'
-                WHERE meta_key LIKE '%.3'
-                   OR meta_key LIKE '%.4'
-                   OR meta_key LIKE '%.6'
-            ";
+        if ( ! $skip_forms ) {
+            $gf_entry_table = $wpdb->prefix . 'gf_entry';
+            if ( $this->table_exists( $gf_entry_table ) ) {
+                $queries['Anonymize Gravity Forms entry IPs'] = "
+                    UPDATE {$gf_entry_table}
+                    SET ip = '0.0.0.0',
+                        source_url = '',
+                        user_agent = ''
+                ";
+                
+                $gf_entry_meta_table = $wpdb->prefix . 'gf_entry_meta';
+                
+                // Redact all text-based field values (comprehensive approach)
+                $queries['Clear Gravity Forms text field values'] = "
+                    UPDATE {$gf_entry_meta_table}
+                    SET meta_value = '[REDACTED]'
+                    WHERE meta_value != ''
+                    AND LENGTH(meta_value) > 0
+                    AND meta_value NOT IN ('yes', 'no', '1', '0')
+                ";
+            }
         }
 
         // Ninja Forms submissions
-        $nf_submissions_table = $wpdb->prefix . 'nf3_submissions';
-        if ( $this->table_exists( $nf_submissions_table ) ) {
-            $queries['Clear Ninja Forms submissions'] = "
-                DELETE FROM {$nf_submissions_table}
-            ";
+        if ( ! $skip_forms ) {
+            $nf_submissions_table = $wpdb->prefix . 'nf3_submissions';
+            if ( $this->table_exists( $nf_submissions_table ) ) {
+                $queries['Clear Ninja Forms submissions'] = "
+                    DELETE FROM {$nf_submissions_table}
+                ";
+            }
         }
 
         // WPForms entries
-        $wpforms_entries_table = $wpdb->prefix . 'wpforms_entries';
-        if ( $this->table_exists( $wpforms_entries_table ) ) {
-            $queries['Anonymize WPForms entry IPs'] = "
-                UPDATE {$wpforms_entries_table}
-                SET ip_address = '0.0.0.0',
-                    user_agent = ''
-            ";
-            
-            $wpforms_entry_fields_table = $wpdb->prefix . 'wpforms_entry_fields';
-            $queries['Clear WPForms field values'] = "
-                UPDATE {$wpforms_entry_fields_table}
-                SET value = '[REDACTED]'
-                WHERE field_id IN (
-                    SELECT field_id FROM {$wpforms_entry_fields_table}
-                    WHERE value LIKE '%@%'
-                       OR value REGEXP '^[0-9]'
-                       OR LENGTH(value) > 3
-                )
-            ";
+        if ( ! $skip_forms ) {
+            $wpforms_entries_table = $wpdb->prefix . 'wpforms_entries';
+            if ( $this->table_exists( $wpforms_entries_table ) ) {
+                $queries['Anonymize WPForms entry IPs'] = "
+                    UPDATE {$wpforms_entries_table}
+                    SET ip_address = '0.0.0.0',
+                        user_agent = ''
+                ";
+                
+                $wpforms_entry_fields_table = $wpdb->prefix . 'wpforms_entry_fields';
+                
+                // Redact all field values (comprehensive approach)
+                $queries['Clear WPForms field values'] = "
+                    UPDATE {$wpforms_entry_fields_table}
+                    SET value = '[REDACTED]'
+                    WHERE value != ''
+                    AND LENGTH(value) > 0
+                ";
+            }
         }
 
         // MemberPress user metadata
@@ -389,6 +398,21 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
             $queries['Clear LearnDash user activity meta'] = "
                 UPDATE {$ld_user_activity_table}
                 SET activity_meta = ''
+            ";
+        }
+
+        // WP Mail SMTP email logs
+        $wp_mail_smtp_logs_table = $wpdb->prefix . 'wpmailsmtp_emails_log';
+        if ( $this->table_exists( $wp_mail_smtp_logs_table ) ) {
+            $queries['Clear WP Mail SMTP email logs'] = "
+                DELETE FROM {$wp_mail_smtp_logs_table}
+            ";
+        }
+
+        $wp_mail_smtp_attachments_table = $wpdb->prefix . 'wpmailsmtp_attachment_files';
+        if ( $this->table_exists( $wp_mail_smtp_attachments_table ) ) {
+            $queries['Clear WP Mail SMTP attachment files'] = "
+                DELETE FROM {$wp_mail_smtp_attachments_table}
             ";
         }
 

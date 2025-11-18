@@ -80,6 +80,14 @@ Preview what would be erased without making any actual changes:
 wp erase-personal-data run --dry-run
 ```
 
+### Skip Form Submissions
+
+Erase personal data but preserve form submissions (Gravity Forms, WPForms, Contact Form 7, Ninja Forms):
+
+```bash
+wp erase-personal-data run --skip-forms
+```
+
 ## What Data Gets Erased?
 
 ### WordPress Core

@@ -3,7 +3,7 @@
   "description": "WP-CLI command to import a database, erase personal data, and optionally delete the source SQL file",
   "type": "wp-cli-package",
   "homepage": "https://github.com/jooplaan/erase-personal-data",
-  "version": "1.1.1",
+  "version": "1.2.1",
   "license": "MIT",
   "require": {
     "wp-cli/wp-cli": "^2"
