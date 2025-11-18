@@ -379,6 +379,20 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
             ";
         }
 
+        // WP Mail SMTP Pro email logs
+        $wpmailsmtp_emails_table = $wpdb->prefix . 'wpmailsmtp_emails_log';
+        if ( $this->table_exists( $wpmailsmtp_emails_table ) ) {
+            $queries['Anonymize WP Mail SMTP email logs'] = "
+                UPDATE {$wpmailsmtp_emails_table}
+                SET people = '[REDACTED]',
+                    subject = '[REDACTED]',
+                    headers = ''
+            ";
+            $queries['Clear WP Mail SMTP email log attachments'] = "
+                DELETE FROM {$wpdb->prefix}wpmailsmtp_attachment_files
+            ";
+        }
+
         // WP User Manager custom fields
         $wpum_fields_table = $wpdb->prefix . 'wpum_field_meta';
         if ( $this->table_exists( $wpum_fields_table ) ) {
@@ -428,6 +442,58 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
                 DELETE FROM {$wp_mail_smtp_attachments_table}
             ";
         }
+
+        // Pronamic Pay payment data
+        $pronamic_payments_table = $wpdb->prefix . 'pronamic_pay_payments';
+        if ( $this->table_exists( $pronamic_payments_table ) ) {
+            $queries['Anonymize Pronamic Pay customer names'] = "
+                UPDATE {$pronamic_payments_table}
+                SET customer_name = 'Anonymous Customer'
+            ";
+            $queries['Anonymize Pronamic Pay email addresses'] = "
+                UPDATE {$pronamic_payments_table}
+                SET email = CONCAT('payment', id, '@example.com')
+            ";
+            $queries['Clear Pronamic Pay contact details'] = "
+                UPDATE {$pronamic_payments_table}
+                SET telephone_number = '',
+                    company_name = '',
+                    address = '',
+                    city = '',
+                    zip = '',
+                    country = ''
+                WHERE telephone_number IS NOT NULL
+                   OR company_name IS NOT NULL
+                   OR address IS NOT NULL
+            ";
+        }
+
+        // Pronamic Pay payment post meta (custom post type data)
+        $queries['Anonymize Pronamic Pay payment post meta'] = "
+            UPDATE {$wpdb->postmeta}
+            SET meta_value = 'Anonymous Customer'
+            WHERE meta_key = '_pronamic_payment_customer_name'
+        ";
+        $queries['Clear Pronamic Pay email in post meta'] = "
+            UPDATE {$wpdb->postmeta} pm
+            INNER JOIN {$wpdb->posts} p ON pm.post_id = p.ID
+            SET pm.meta_value = CONCAT('payment', p.ID, '@example.com')
+            WHERE p.post_type = 'pronamic_payment'
+            AND pm.meta_key = '_pronamic_payment_email'
+        ";
+        $queries['Clear Pronamic Pay contact post meta'] = "
+            DELETE FROM {$wpdb->postmeta}
+            WHERE post_id IN (
+                SELECT ID FROM {$wpdb->posts} WHERE post_type = 'pronamic_payment'
+            )
+            AND meta_key IN (
+                '_pronamic_payment_telephone_number',
+                '_pronamic_payment_address',
+                '_pronamic_payment_city',
+                '_pronamic_payment_zip',
+                '_pronamic_payment_country'
+            )
+        ";
 
         // User Registration logs (various plugins)
         $queries['Clear user registration IP addresses'] = "

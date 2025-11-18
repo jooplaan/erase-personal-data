@@ -1,364 +1,378 @@
 # WP-CLI Erase Personal Data Command
 
-A comprehensive WP-CLI command for erasing personal data from WordPress core and 20+ popular plugins in any WordPress installation.
+A comprehensive WP-CLI command for importing a database, sanitizing personal data from WordPress core and 20+ popular plugins, and optionally deleting the source SQL file.
 
-## Features
+## What It Does
 
+This command helps you safely sanitize production databases for development/staging environments by:
 
+1. **Importing** an SQL database file into WordPress
+2. **Anonymizing** personal data from WordPress core and popular plugins
+3. **Optionally deleting** the source SQL file
+
+Perfect for GDPR compliance, creating safe development environments, and client handoffs.
 
 ## Installation
 
 ### Method 1: Install from GitHub (Recommended)
 
-Install this WP-CLI command package directly from GitHub:
-
-#### Global installation
-
 ```bash
 wp package install https://github.com/jooplaan/erase-personal-data.git
 ```
 
-#### Manual installation
+### Method 2: Manual Installation
 
-Clone the repository into your WP-CLI packages directory:
+1. Clone this repository:
+   ```bash
+   git clone https://github.com/jooplaan/erase-personal-data.git
+   cd erase-personal-data
+   ```
 
-```bash
-git clone https://github.com/jooplaan/erase-personal-data.git ~/.wp-cli/packages/erase-personal-data
-```
+2. Install to WP-CLI packages directory:
+   ```bash
+   mkdir -p ~/.wp-cli/packages
+   ln -s $(pwd) ~/.wp-cli/packages/erase-personal-data
+   ```
 
-### Method 2: Local Development/Testing
+### Method 3: Local Development
 
-For local development and testing before committing to GitHub, you can require the package directly in a WordPress installation.
+For testing in a specific WordPress installation:
 
-Navigate to your WordPress directory and add this to your `wp-cli.yml`:
+1. Add to your project's `composer.json`:
+   ```json
+   {
+     "require-dev": {
+       "wp-cli/erase-personal-data": "dev-main"
+     },
+     "repositories": [
+       {
+         "type": "vcs",
+         "url": "https://github.com/jooplaan/erase-personal-data.git"
+       }
+     ]
+   }
+   ```
 
-```yaml
-require:
-  - /path/to/your/local/erase-personal-data/command.php
-```
+2. Run `composer install`
 
-For example:
-
-```yaml
-require:
-  - ./erase-personal-data/command.php
-```
-
----
-See below for usage instructions.
+3. Create `wp-cli.yml` in your WordPress root:
+   ```yaml
+   require:
+     - vendor/wp-cli/erase-personal-data/command.php
+   ```
 
 ## Requirements
 
-
 - PHP 7.4 or higher
-- WP-CLI installed and configured
+- WP-CLI installed
+- MySQL/MariaDB command-line tools
 - WordPress installation
 
 ## Usage
 
-### Basic Usage
-
-Erase personal data from the current WordPress database with confirmation prompt:
+### Basic Command
 
 ```bash
-wp erase-personal-data run
+wp erase-personal-data import <file> [--delete-file] [--keep-file]
 ```
 
-### Skip Confirmation
+### Parameters
 
-Erase personal data without confirmation prompt:
+#### `<file>` (required)
+Path to the SQL database file to import.
 
+**Example:**
 ```bash
-wp erase-personal-data run --yes
+wp erase-personal-data import /path/to/database.sql
 ```
 
-### Preview Changes (Dry Run)
+#### `--delete-file` (optional)
+Automatically delete the source SQL file after successful import and sanitization, without prompting.
 
-Preview what would be erased without making any actual changes:
-
+**Example:**
 ```bash
-wp erase-personal-data run --dry-run
+wp erase-personal-data import database.sql --delete-file
 ```
 
-### Skip Form Submissions
+#### `--keep-file` (optional)
+Keep the source SQL file after import, without prompting.
 
-Erase personal data but preserve form submissions (Gravity Forms, WPForms, Contact Form 7, Ninja Forms):
-
+**Example:**
 ```bash
-wp erase-personal-data run --skip-forms
+wp erase-personal-data import database.sql --keep-file
 ```
 
-## What Data Gets Erased?
+#### Default Behavior (no flags)
+If neither `--delete-file` nor `--keep-file` is specified, you'll be prompted:
+```
+Delete the source SQL file 'database.sql'? [y/N]:
+```
+
+### Usage Examples
+
+**Import and be prompted about file deletion:**
+```bash
+wp erase-personal-data import production-backup.sql
+```
+
+**Import and automatically delete the source file:**
+```bash
+wp erase-personal-data import production-backup.sql --delete-file
+```
+
+**Import and keep the source file:**
+```bash
+wp erase-personal-data import production-backup.sql --keep-file
+```
+
+## What Data Gets Sanitized
 
 ### WordPress Core
 
-1. **User Emails**: Anonymizes to `user{ID}@example.com` (except user ID 1)
-2. **Display Names**: Changes to `User {ID}` (except user ID 1)
-3. **User Meta**: Clears first name, last name, nickname, and description
-4. **Comment Authors**: Anonymizes all comment author information
-5. **Comment Author Emails**: Changes to `anonymous@example.com`
-6. **Comment Author IPs**: Changes to `0.0.0.0`
-7. **Comment Meta**: Removes personal data from comment metadata
-8. **Password Reset Keys**: Clears all password reset tokens
-9. **Session Tokens**: Removes all user sessions
-10. **User Registration IPs**: Deletes IP addresses from various registration logs
+- User emails → `user{ID}@example.com` (preserves user ID 1)
+- User display names → `User {ID}`
+- User metadata (first name, last name, nickname, description)
+- Comment authors → `Anonymous`
+- Comment emails → `anonymous@example.com`
+- Comment IPs → `0.0.0.0`
+- Password reset keys
+- Session tokens
+- User registration IPs
 
-### E-commerce Plugins
+### Supported Plugins (20+)
 
-#### WooCommerce
+The command automatically detects installed plugins and sanitizes their data:
 
-- Customer names → `Customer #{ID}`
-- Customer emails → `customer{ID}@example.com`
-- Customer addresses (postcode, city, state)
-- Order billing/shipping names, emails, phones
-- Order billing/shipping addresses
-- Subscription payment method history
+**E-commerce:**
+- WooCommerce (customers, orders, billing, shipping, subscriptions)
+- Easy Digital Downloads
+- Pronamic Pay
 
+**Forms:**
+- Contact Form 7 (Flamingo)
+- Gravity Forms (modern & legacy tables)
+- Ninja Forms
+- WPForms
 
-#### Easy Digital Downloads (EDD)
+**Membership:**
+- MemberPress
+- BuddyPress/BuddyBoss
+- WP User Manager
+- bbPress
 
-- Customer names → `Customer #{ID}`
-- Customer emails → `customer{ID}@example.com`
+**Email Marketing:**
+- Newsletter
+- MailPoet
+- WP Mail SMTP Pro
 
+**Learning:**
+- LearnDash
 
-#### Pronamic Pay
+[See full list of supported plugins](#supported-plugins-reference)
 
-- Customer names → `Anonymous Customer`
-- Email addresses → `payment{ID}@example.com`
-- Contact details (phone, company, address, city, zip, country)
+## Security & Best Practices
 
+⚠️ **Warning**: This command makes **irreversible changes** to your database.
 
-### Form Builder Plugins
+### Before Running
 
-#### Contact Form 7 (Flamingo)
+1. ✅ **Always backup your database** before importing
+2. ✅ Test on a development environment first
+3. ✅ Verify you have proper authorization
+4. ✅ Review the sanitization queries for your use case
 
-- Deletes all stored form submissions
+### Recommended Workflow
 
+```bash
+# 1. Backup current database
+wp db export backup-$(date +%Y%m%d).sql
 
-#### Gravity Forms
+# 2. Import and sanitize production database
+wp erase-personal-data import production.sql --delete-file
 
-- Entry IP addresses → `0.0.0.0`
-- Source URLs and user agents
-- Personal data in form fields (emails, phone numbers, text)
+# 3. Verify results
+wp db query "SELECT user_email FROM wp_users LIMIT 5"
+```
 
+## Contributing
 
-#### Ninja Forms
+We welcome contributions! Here's how you can help:
 
-- Deletes all form submissions
+### Adding Plugin Support
 
+To add support for a new plugin:
 
-#### WPForms
+1. **Fork this repository**
 
-- Entry IP addresses → `0.0.0.0`
-- User agents
-- Personal data in form field values
+2. **Identify the plugin's database tables**
+   - Check the plugin's database schema
+   - Find tables/fields containing personal data
 
+3. **Add sanitization queries** in `src/ErasePersonalDataCommand.php`
+   
+   Add your queries in the `get_sanitization_queries()` method:
 
-### Membership & Community Plugins
+   ```php
+   // Your Plugin Name
+   $your_plugin_table = $wpdb->prefix . 'your_plugin_table';
+   if ( $this->table_exists( $your_plugin_table ) ) {
+       $queries['Anonymize Your Plugin data'] = "
+           UPDATE {$your_plugin_table}
+           SET email = CONCAT('user', id, '@example.com'),
+               name = 'Anonymous User'
+       ";
+   }
+   ```
 
-#### MemberPress
+4. **Update the README** 
+   - Add the plugin to the supported plugins list
+   - Document what data gets sanitized
 
-- Custom member fields (preserves active memberships and product associations)
+5. **Test thoroughly**
+   - Test on a database with the plugin installed
+   - Verify data is properly anonymized
+   - Ensure no errors occur if plugin isn't installed
 
+6. **Submit a Pull Request**
+   - Clear description of what plugin support was added
+   - Explain what data is being sanitized
 
-#### BuddyPress / BuddyBoss
+### Anonymization Patterns
 
-- Extended profile data → `[REDACTED]`
-
-
-#### WP User Manager
-
-- Custom profile fields
-
-
-#### bbPress
-
-- Author IP addresses → `0.0.0.0`
-
-
-### Email Marketing Plugins
-
-#### Newsletter Plugin
-
-- Subscriber emails → `subscriber{ID}@example.com`
-- Subscriber names → `Subscriber #{ID}`
-- IP addresses → `0.0.0.0`
-
-
-#### MailPoet
-
-- Subscriber emails → `subscriber{ID}@example.com`
-- Subscriber names → `Subscriber #{ID}`
-
-
-### Learning Management Plugins
-
-#### LearnDash
-
-- User activity metadata
-
-
-## Supported Plugins
-
-The command automatically detects and sanitizes data from these plugins if installed:
-
-| Plugin | Data Sanitized |
-|--------|----------------|
-| **WooCommerce** | Customers, orders, billing, shipping, subscriptions |
-| **Easy Digital Downloads** | Customer information |
-| **Pronamic Pay** | Payment customer data and contact details |
-| **Contact Form 7** (Flamingo) | Form submissions |
-| **Gravity Forms** | Entries and field data |
-| **Ninja Forms** | Submissions |
-| **WPForms** | Entries and field data |
-| **MemberPress** | Custom member fields |
-| **BuddyPress / BuddyBoss** | Extended profiles |
-| **WP User Manager** | Custom profile fields |
-| **bbPress** | Author IPs |
-| **Newsletter** | Subscriber information |
-| **MailPoet** | Subscriber information |
-| **LearnDash** | User activity |
-
-## Customization
-
-To add custom sanitization queries or modify existing ones, edit the `get_sanitization_queries()` method in `src/ErasePersonalDataCommand.php`.
-
-### Example: Adding Custom Plugin Support
+Follow these patterns for consistency:
 
 ```php
-// Custom plugin table sanitization
-$custom_table = $wpdb->prefix . 'my_custom_plugin_users';
-if ( $this->table_exists( $custom_table ) ) {
-    $queries['Anonymize custom plugin emails'] = "
-        UPDATE {$custom_table}
-        SET email = CONCAT('user', id, '@example.com'),
-            name = 'Anonymous User'
+// Email addresses
+"email = CONCAT('user', id, '@example.com')"
+
+// Names
+"name = 'Anonymous User'"
+"name = CONCAT('User #', id)"
+
+// IPs
+"ip = '0.0.0.0'"
+
+// Addresses
+"address = '', city = '', zip = ''"
+
+// Generic redaction
+"value = '[REDACTED]'"
+```
+
+### Code Guidelines
+
+- Check table existence with `$this->table_exists()`
+- Use WordPress database prefix: `$wpdb->prefix . 'table_name'`
+- Add descriptive query names
+- Follow WordPress coding standards
+- Add comments for complex logic
+
+### Example Contribution
+
+```php
+// Example: Adding support for "My Custom Plugin"
+$custom_plugin_users = $wpdb->prefix . 'custom_plugin_users';
+if ( $this->table_exists( $custom_plugin_users ) ) {
+    // Anonymize user emails
+    $queries['Anonymize Custom Plugin user emails'] = "
+        UPDATE {$custom_plugin_users}
+        SET email = CONCAT('user', id, '@example.com')
+    ";
+    
+    // Clear personal details
+    $queries['Clear Custom Plugin personal details'] = "
+        UPDATE {$custom_plugin_users}
+        SET phone = '',
+            address = '',
+            notes = '[REDACTED]'
     ";
 }
 ```
 
-### Example: Adding Custom User Meta Sanitization
-
-```php
-$queries['Clear custom phone numbers'] = "
-    DELETE FROM {$wpdb->usermeta}
-    WHERE meta_key IN ('phone_number', 'mobile_phone', 'whatsapp')
-";
-```
-
-## Security Considerations
-
-⚠️ **Warning**: This command makes **irreversible changes** to your database. Always:
-
-1. **Backup your database** before running this command
-2. Test on a development/staging environment first
-3. Review the sanitization queries to ensure they match your needs
-4. Verify compliance with privacy regulations (GDPR, CCPA, etc.)
-5. Ensure you have proper permissions and authorization
-6. Document the sanitization process for audit purposes
-
-## Use Cases
-
-- **Development Environments**: Sanitize production data for safe local development
-- **Staging/Testing**: Clean personal data from production imports
-- **GDPR Compliance**: Fulfill right-to-erasure requests on database backups
-- **Client Handoffs**: Remove sensitive customer data before transferring databases
-- **Security Audits**: Clean data for third-party security testing
-
 ## Troubleshooting
+
+### Database Import Fails
+
+**Error**: Import failed with error code
+- Check MySQL credentials in `wp-config.php`
+- Ensure SQL file is not corrupted
+- Verify MySQL user has sufficient privileges (CREATE, INSERT, UPDATE, DELETE)
+- Try manual import: `mysql -u user -p database < file.sql`
 
 ### Some Data Not Erased
 
-- Review the queries in `get_sanitization_queries()` method
-- Some plugins may store personal data in custom tables not covered by this command
-- Check plugin documentation for data storage locations
-- Consider extending the command for your specific plugins
+- Plugin tables may use different naming conventions
+- Some plugins store data in custom tables not yet supported
+- Consider contributing support for that plugin!
 
 ### Permission Errors
 
-- Ensure WP-CLI can access the WordPress installation
-- Check MySQL user permissions
+- Verify WP-CLI can access the WordPress installation
+- Check file permissions on the SQL file
+- Ensure MySQL user has required permissions
 
-### Table Not Found Errors
+## Supported Plugins Reference
 
-This should not occur as the command checks for table existence before running queries. If you see this error, please report it as a bug.
+| Plugin | What Gets Sanitized |
+|--------|---------------------|
+| **WooCommerce** | Customers, orders, billing addresses, shipping addresses, phone numbers, subscriptions |
+| **Easy Digital Downloads** | Customer names and emails |
+| **Pronamic Pay** | Customer names, emails, phone numbers, addresses (table & post meta) |
+| **Contact Form 7** (Flamingo) | All form submissions (deleted) |
+| **Gravity Forms** | Entry IPs, user agents, all form field values (modern & legacy tables) |
+| **Ninja Forms** | All submissions (deleted) |
+| **WPForms** | Entry IPs, user agents, form field values |
+| **MemberPress** | Custom member fields (preserves membership/product data) |
+| **BuddyPress / BuddyBoss** | Extended profile fields |
+| **WP User Manager** | Custom profile fields |
+| **bbPress** | Author IP addresses |
+| **Newsletter** | Subscriber emails, names, IPs |
+| **MailPoet** | Subscriber emails and names |
+| **WP Mail SMTP Pro** | Email logs (recipients, subjects, headers), attachments |
+| **LearnDash** | User activity metadata |
 
-## Best Practices
+## Customization
 
-1. **Always backup** before running the command
-2. **Test queries** on a copy of your database first
-3. **Review logs** after running to verify all sanitization completed
-4. **Document** which data was sanitized for compliance records
-5. **Verify results** by spot-checking anonymized data
-6. **Update regularly** as you add new plugins that store personal data
+### Adding Custom Sanitization
 
-## Development
+Edit `src/ErasePersonalDataCommand.php` and add your queries to the `get_sanitization_queries()` method:
 
-### Project Structure
-
-```bash
-erase-personal-data/
-├── .github/
-│   └── copilot-instructions.md
-├── src/
-│   └── ErasePersonalDataCommand.php
-├── command.php
-├── composer.json
-├── .gitignore
-└── README.md
+```php
+// Custom sanitization example
+$queries['Clear custom phone field'] = "
+    DELETE FROM {$wpdb->usermeta}
+    WHERE meta_key IN ('phone_number', 'mobile', 'whatsapp')
+";
 ```
 
-### Running Tests
+## Use Cases
 
-```bash
-composer test
-```
+- **Development Environments** – Sanitize production data for safe local development
+- **Staging Sites** – Clean personal data from production imports
+- **GDPR Compliance** – Fulfill right-to-erasure requests on database backups
+- **Client Handoffs** – Remove sensitive customer data before transferring databases
+- **Security Audits** – Clean data for third-party security testing
+- **Testing** – Create realistic test data without exposing real personal information
 
-### Code Standards
+## License
 
-This project follows WordPress coding standards for PHP.
+MIT License
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/jooplaan/erase-personal-data/issues)
+- **Contribute**: [Pull Requests Welcome](https://github.com/jooplaan/erase-personal-data/pulls)
 
 ## Changelog
 
 ### Version 1.0.0
-
 - Initial release
 - WordPress core data sanitization
 - Support for 20+ popular plugins
 - Smart table detection
-- Confirmation prompt for safety
+- Interactive file deletion prompt
+- Support for Gravity Forms legacy (RG) tables
 
-## License
+---
 
-MIT License - See LICENSE file for details
-
-## Contributing
-
-Contributions are welcome! Here's how you can help:
-
-1. **Report Bugs**: Open an issue with detailed information
-2. **Suggest Features**: Propose new plugin support or features
-3. **Submit Pull Requests**: Add support for new plugins
-4. **Improve Documentation**: Help make this README better
-
-### Adding New Plugin Support
-
-When submitting PRs to add plugin support:
-
-1. Check if the plugin's tables exist using `table_exists()`
-2. Use consistent anonymization patterns (e.g., `user{ID}@example.com`)
-3. Document what data is being sanitized
-4. Test on a database with the plugin installed
-5. Update this README with the new plugin in the supported list
-
-## Support
-
-For issues, questions, or contributions:
-
-- Open an issue on GitHub
-- Check existing issues for solutions
-- Provide detailed information about your environment and the problem
-
-## Disclaimer
-
-This tool is provided as-is. Always test thoroughly and maintain backups. The authors are not responsible for data loss or compliance issues. You are responsible for ensuring this tool meets your specific privacy and legal requirements.
+**Disclaimer**: This tool is provided as-is. Always test thoroughly and maintain backups. You are responsible for ensuring this tool meets your specific privacy and legal requirements.
