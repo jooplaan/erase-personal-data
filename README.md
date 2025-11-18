@@ -67,7 +67,28 @@ For testing in a specific WordPress installation:
 - PHP 7.4 or higher
 - WP-CLI installed
 - MySQL/MariaDB command-line tools
-- WordPress installation
+- WordPress installation (single site or multisite)
+
+## Multisite Support
+
+✅ **Fully multisite-compatible!** 
+
+When running on a WordPress multisite network:
+- **User data** is only anonymized for users who belong to the current site
+- **Plugin data** (WooCommerce, forms, etc.) is site-specific by default
+- **Comments** are already site-specific in WordPress multisite
+
+To sanitize a specific site in a multisite network:
+
+```bash
+# Switch to the site you want to sanitize
+wp --url=site2.example.com erase-personal-data run --dry-run
+
+# Or use the site ID
+wp --url=2 erase-personal-data run --dry-run
+```
+
+**Note:** In multisite, users are shared across the network. The command intelligently detects which users belong to the current site by checking their capabilities meta key for that site.
 
 ## Usage
 

@@ -20,6 +20,12 @@ use WP_CLI_Command;
  * - Email marketing subscriber data
  * - And much more
  *
+ * MULTISITE SUPPORT:
+ * Fully compatible with WordPress multisite networks. When running on a multisite:
+ * - Only users who belong to the current site are anonymized
+ * - Use --url flag to specify which site to sanitize: wp --url=site2.example.com erase-personal-data run
+ * - Plugin data and comments are already site-specific by default
+ *
  * ## AVAILABLE COMMANDS
  *
  * run - Erase personal data from the current WordPress database
@@ -34,6 +40,9 @@ use WP_CLI_Command;
  *
  *     # Erase data with confirmation
  *     wp erase-personal-data run
+ *
+ *     # Multisite: sanitize a specific site
+ *     wp --url=site2.example.com erase-personal-data run
  *
  * ## WARNING
  *
@@ -230,41 +239,93 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
     private function get_sanitization_queries( $skip_forms = false ) {
         global $wpdb;
 
-        $queries = [
-            'Anonymize user emails' => "
+        $queries = [];
+
+        // Determine if we're in a multisite and build appropriate user filter
+        $is_multisite = is_multisite();
+        $site_users_table = $wpdb->prefix . 'capabilities';
+        
+        if ( $is_multisite ) {
+            // In multisite, only anonymize users who belong to the current site
+            // by checking if they have a capabilities meta key for this site
+            $queries['Anonymize user emails'] = "
                 UPDATE {$wpdb->users}
                 SET user_email = CONCAT('user', ID, '@example.com')
                 WHERE ID > 1
-            ",
-            'Clear user display names' => "
+                  AND ID IN (
+                      SELECT user_id FROM {$wpdb->usermeta}
+                      WHERE meta_key = '{$site_users_table}'
+                  )
+            ";
+            $queries['Clear user display names'] = "
                 UPDATE {$wpdb->users}
                 SET display_name = CONCAT('User ', ID)
                 WHERE ID > 1
-            ",
-            'Clear user first and last names' => "
+                  AND ID IN (
+                      SELECT user_id FROM {$wpdb->usermeta}
+                      WHERE meta_key = '{$site_users_table}'
+                  )
+            ";
+            $queries['Clear user first and last names'] = "
                 UPDATE {$wpdb->usermeta}
                 SET meta_value = ''
                 WHERE meta_key IN ('first_name', 'last_name', 'nickname')
-            ",
-            'Clear user descriptions' => "
+                  AND user_id IN (
+                      SELECT user_id FROM (
+                          SELECT user_id FROM {$wpdb->usermeta}
+                          WHERE meta_key = '{$site_users_table}'
+                      ) AS site_users
+                  )
+            ";
+            $queries['Clear user descriptions'] = "
                 UPDATE {$wpdb->usermeta}
                 SET meta_value = ''
                 WHERE meta_key = 'description'
-            ",
-            'Anonymize comment authors' => "
-                UPDATE {$wpdb->comments}
-                SET comment_author = 'Anonymous',
-                    comment_author_email = 'anonymous@example.com',
-                    comment_author_url = '',
-                    comment_author_IP = '0.0.0.0'
-            ",
-            'Clear personal data from comment meta' => "
-                DELETE FROM {$wpdb->commentmeta}
-                WHERE meta_key LIKE '%author%'
-                   OR meta_key LIKE '%email%'
-                   OR meta_key LIKE '%ip%'
-            ",
-        ];
+                  AND user_id IN (
+                      SELECT user_id FROM (
+                          SELECT user_id FROM {$wpdb->usermeta}
+                          WHERE meta_key = '{$site_users_table}'
+                      ) AS site_users
+                  )
+            ";
+        } else {
+            // Single site - use the original simpler queries
+            $queries['Anonymize user emails'] = "
+                UPDATE {$wpdb->users}
+                SET user_email = CONCAT('user', ID, '@example.com')
+                WHERE ID > 1
+            ";
+            $queries['Clear user display names'] = "
+                UPDATE {$wpdb->users}
+                SET display_name = CONCAT('User ', ID)
+                WHERE ID > 1
+            ";
+            $queries['Clear user first and last names'] = "
+                UPDATE {$wpdb->usermeta}
+                SET meta_value = ''
+                WHERE meta_key IN ('first_name', 'last_name', 'nickname')
+            ";
+            $queries['Clear user descriptions'] = "
+                UPDATE {$wpdb->usermeta}
+                SET meta_value = ''
+                WHERE meta_key = 'description'
+            ";
+        }
+
+        // Comments are site-specific in multisite, so these queries are safe as-is
+        $queries['Anonymize comment authors'] = "
+            UPDATE {$wpdb->comments}
+            SET comment_author = 'Anonymous',
+                comment_author_email = 'anonymous@example.com',
+                comment_author_url = '',
+                comment_author_IP = '0.0.0.0'
+        ";
+        $queries['Clear personal data from comment meta'] = "
+            DELETE FROM {$wpdb->commentmeta}
+            WHERE meta_key LIKE '%author%'
+               OR meta_key LIKE '%email%'
+               OR meta_key LIKE '%ip%'
+        ";
 
         // WooCommerce customer data anonymization
         $wc_customers_table = $wpdb->prefix . 'wc_customer_lookup';
