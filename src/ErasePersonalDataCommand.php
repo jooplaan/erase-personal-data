@@ -266,6 +266,28 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
                     AND meta_value NOT IN ('yes', 'no', '1', '0')
                 ";
             }
+
+            // Gravity Forms legacy RG tables (older versions)
+            $rg_lead_table = $wpdb->prefix . 'rg_lead';
+            if ( $this->table_exists( $rg_lead_table ) ) {
+                $queries['Anonymize Gravity Forms legacy entry IPs'] = "
+                    UPDATE {$rg_lead_table}
+                    SET ip = '0.0.0.0',
+                        source_url = '',
+                        user_agent = ''
+                ";
+                
+                $rg_lead_detail_table = $wpdb->prefix . 'rg_lead_detail';
+                if ( $this->table_exists( $rg_lead_detail_table ) ) {
+                    $queries['Clear Gravity Forms legacy lead detail values'] = "
+                        UPDATE {$rg_lead_detail_table}
+                        SET value = '[REDACTED]'
+                        WHERE value != ''
+                        AND LENGTH(value) > 0
+                        AND value NOT IN ('yes', 'no', '1', '0')
+                    ";
+                }
+            }
         }
 
         // Ninja Forms submissions
