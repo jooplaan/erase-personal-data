@@ -6,102 +6,66 @@ use WP_CLI;
 use WP_CLI_Command;
 
 /**
- * Imports a database, erases personal data, and optionally deletes the source SQL file.
+ * Erases personal data from the current WordPress database.
  */
 class ErasePersonalDataCommand extends WP_CLI_Command {
 
     /**
-     * Import a database, run sanitization queries to erase personal data, and optionally delete the source file.
+     * Erase personal data from the current WordPress database.
      *
      * ## OPTIONS
      *
-     * <file>
-     * : Path to the SQL database file to import.
+     * [--yes]
+     * : Skip the confirmation prompt and proceed with data erasure.
      *
-     * [--delete-file]
-     * : Automatically delete the source SQL file after import without prompting.
-     *
-     * [--keep-file]
-     * : Keep the source SQL file after import without prompting.
+     * [--dry-run]
+     * : Preview what would be erased without making any actual changes.
      *
      * ## EXAMPLES
      *
-     *     # Import database and prompt to delete source file
-     *     wp erase-personal-data import database.sql
+     *     # Erase personal data with confirmation prompt
+     *     wp erase-personal-data run
      *
-     *     # Import database and automatically delete source file
-     *     wp erase-personal-data import database.sql --delete-file
+     *     # Erase personal data without confirmation prompt
+     *     wp erase-personal-data run --yes
      *
-     *     # Import database and keep source file
-     *     wp erase-personal-data import database.sql --keep-file
+     *     # Preview what would be erased without making changes
+     *     wp erase-personal-data run --dry-run
      *
      * @when after_wp_load
      */
-    public function import( $args, $assoc_args ) {
+    public function run( $args, $assoc_args ) {
         global $wpdb;
 
-        $file = $args[0];
+        $dry_run = isset( $assoc_args['dry-run'] );
 
-        // Validate file exists
-        if ( ! file_exists( $file ) ) {
-            WP_CLI::error( "File not found: {$file}" );
+        if ( $dry_run ) {
+            WP_CLI::warning( 'DRY RUN MODE: No changes will be made to the database.' );
+        } else {
+            // Confirmation prompt unless --yes flag is provided
+            if ( ! isset( $assoc_args['yes'] ) ) {
+                WP_CLI::warning( 'This will IRREVERSIBLY erase personal data from your WordPress database.' );
+                WP_CLI::confirm( 'Are you sure you want to continue?', $assoc_args );
+            }
         }
-
-        // Validate file is readable
-        if ( ! is_readable( $file ) ) {
-            WP_CLI::error( "File is not readable: {$file}" );
-        }
-
-        WP_CLI::log( "Starting database import from: {$file}" );
-
-        // Import the database
-        $this->import_database( $file );
-
-        WP_CLI::success( "Database imported successfully." );
 
         // Erase personal data
         WP_CLI::log( "Starting personal data erasure..." );
-        $this->erase_personal_data();
-        WP_CLI::success( "Personal data erased successfully." );
-
-        // Handle source file deletion
-        $this->handle_source_file_deletion( $file, $assoc_args );
-    }
-
-    /**
-     * Import database from SQL file.
-     *
-     * @param string $file Path to SQL file.
-     */
-    private function import_database( $file ) {
-        // Get database credentials from wp-config.php
-        $db_user = DB_USER;
-        $db_pass = DB_PASSWORD;
-        $db_name = DB_NAME;
-        $db_host = DB_HOST;
-
-        // Build mysql command
-        $mysql_cmd = sprintf(
-            'mysql --user=%s --password=%s --host=%s %s < %s',
-            escapeshellarg( $db_user ),
-            escapeshellarg( $db_pass ),
-            escapeshellarg( $db_host ),
-            escapeshellarg( $db_name ),
-            escapeshellarg( $file )
-        );
-
-        // Execute import
-        exec( $mysql_cmd, $output, $return_code );
-
-        if ( $return_code !== 0 ) {
-            WP_CLI::error( "Database import failed with error code: {$return_code}" );
+        $this->erase_personal_data( $dry_run );
+        
+        if ( $dry_run ) {
+            WP_CLI::success( "Dry run completed. No data was actually erased." );
+        } else {
+            WP_CLI::success( "Personal data erased successfully." );
         }
     }
 
     /**
      * Erase personal data from the database.
+     *
+     * @param bool $dry_run Whether to run in dry-run mode (preview only).
      */
-    private function erase_personal_data() {
+    private function erase_personal_data( $dry_run = false ) {
         global $wpdb;
 
         // Array of queries to erase personal data
@@ -109,12 +73,22 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
 
         foreach ( $queries as $description => $query ) {
             WP_CLI::log( "  - {$description}" );
-            $result = $wpdb->query( $query );
-
-            if ( $result === false ) {
-                WP_CLI::warning( "Failed to execute: {$description}" );
+            
+            if ( $dry_run ) {
+                // In dry-run mode, just show what would be affected
+                $count_query = preg_replace( '/^(UPDATE|DELETE FROM)\s+/i', 'SELECT COUNT(*) FROM ', $query );
+                $count_query = preg_replace( '/\s+SET\s+.*/i', '', $count_query );
+                
+                WP_CLI::log( "    [DRY RUN] Would affect rows (estimate)" );
             } else {
-                WP_CLI::log( "    Affected rows: {$result}" );
+                // Actually execute the query
+                $result = $wpdb->query( $query );
+
+                if ( $result === false ) {
+                    WP_CLI::warning( "Failed to execute: {$description}" );
+                } else {
+                    WP_CLI::log( "    Affected rows: {$result}" );
+                }
             }
         }
     }
@@ -407,37 +381,5 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
         global $wpdb;
         $result = $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table_name ) );
         return $result === $table_name;
-    }
-
-    /**
-     * Handle deletion of source SQL file.
-     *
-     * @param string $file        Path to SQL file.
-     * @param array  $assoc_args  Associative args from command.
-     */
-    private function handle_source_file_deletion( $file, $assoc_args ) {
-        $delete_file = false;
-
-        // Check for flags
-        if ( isset( $assoc_args['delete-file'] ) ) {
-            $delete_file = true;
-        } elseif ( isset( $assoc_args['keep-file'] ) ) {
-            $delete_file = false;
-        } else {
-            // Prompt user
-            fwrite( STDOUT, "\nDelete the source SQL file '{$file}'? [y/N]: " );
-            $response = trim( fgets( STDIN ) );
-            $delete_file = ( strtolower( $response ) === 'y' );
-        }
-
-        if ( $delete_file ) {
-            if ( unlink( $file ) ) {
-                WP_CLI::success( "Source SQL file deleted: {$file}" );
-            } else {
-                WP_CLI::warning( "Failed to delete source SQL file: {$file}" );
-            }
-        } else {
-            WP_CLI::log( "Source SQL file kept: {$file}" );
-        }
     }
 }

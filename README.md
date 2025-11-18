@@ -1,6 +1,6 @@
 # WP-CLI Erase Personal Data Command
 
-A comprehensive WP-CLI command for importing a database, sanitizing personal data from WordPress core and 20+ popular plugins, and optionally deleting the source SQL file.
+A comprehensive WP-CLI command for erasing personal data from WordPress core and 20+ popular plugins in any WordPress installation.
 
 ## Features
 
@@ -41,13 +41,6 @@ For example:
 
 ```yaml
 require:
-  - /Users/joop/Developer/wp/wp-cli/erase-personal-data/command.php
-```
-
-Alternatively, if you've cloned the repository, you can use a relative path:
-
-```yaml
-require:
   - ./erase-personal-data/command.php
 ```
 
@@ -59,31 +52,32 @@ See below for usage instructions.
 
 - PHP 7.4 or higher
 - WP-CLI installed and configured
-- MySQL/MariaDB command-line tools
 - WordPress installation
 
 ## Usage
 
 ### Basic Usage
 
-Import a database and be prompted whether to delete the source file:
+Erase personal data from the current WordPress database with confirmation prompt:
 
 ```bash
-wp erase-personal-data import database.sql
+wp erase-personal-data run
 ```
 
-### With Flags
+### Skip Confirmation
 
-Automatically delete the source file after import:
+Erase personal data without confirmation prompt:
 
 ```bash
-wp erase-personal-data import database.sql --delete-file
+wp erase-personal-data run --yes
 ```
 
-Keep the source file after import (no prompt):
+### Preview Changes (Dry Run)
+
+Preview what would be erased without making any actual changes:
 
 ```bash
-wp erase-personal-data import database.sql --keep-file
+wp erase-personal-data run --dry-run
 ```
 
 ## What Data Gets Erased?
@@ -259,13 +253,6 @@ $queries['Clear custom phone numbers'] = "
 
 ## Troubleshooting
 
-### Database Import Fails
-
-- Verify MySQL credentials in `wp-config.php` are correct
-- Ensure the SQL file is not corrupted or too large
-- Check that the MySQL user has sufficient privileges (CREATE, INSERT, UPDATE, DELETE)
-- Try importing the database manually first: `mysql -u user -p database < file.sql`
-
 ### Some Data Not Erased
 
 - Review the queries in `get_sanitization_queries()` method
@@ -276,7 +263,6 @@ $queries['Clear custom phone numbers'] = "
 ### Permission Errors
 
 - Ensure WP-CLI can access the WordPress installation
-- Verify file permissions on the SQL file
 - Check MySQL user permissions
 
 ### Table Not Found Errors
@@ -326,7 +312,7 @@ This project follows WordPress coding standards for PHP.
 - WordPress core data sanitization
 - Support for 20+ popular plugins
 - Smart table detection
-- Interactive file deletion prompt
+- Confirmation prompt for safety
 
 ## License
 
