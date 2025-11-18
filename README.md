@@ -15,7 +15,19 @@ Perfect for GDPR compliance, creating safe development environments from product
 
 ## Installation
 
-### Method 1: Install from GitHub (Recommended)
+### Method 1: Install stable release (Recommended)
+
+```bash
+wp package install jooplaan/erase-personal-data:1.5.1
+```
+
+Or install latest from the main branch (for testing):
+
+```bash
+wp package install jooplaan/erase-personal-data:dev-main
+```
+
+If your environment presumes a master branch or hits GitHub API limits, use the direct URL fallback:
 
 ```bash
 wp package install https://github.com/jooplaan/erase-personal-data.git
@@ -24,12 +36,14 @@ wp package install https://github.com/jooplaan/erase-personal-data.git
 ### Method 2: Manual Installation
 
 1. Clone this repository:
+
    ```bash
    git clone https://github.com/jooplaan/erase-personal-data.git
    cd erase-personal-data
    ```
 
 2. Install to WP-CLI packages directory:
+
    ```bash
    mkdir -p ~/.wp-cli/packages
    ln -s $(pwd) ~/.wp-cli/packages/erase-personal-data
@@ -40,7 +54,8 @@ wp package install https://github.com/jooplaan/erase-personal-data.git
 For testing in a specific WordPress installation:
 
 1. Add to your project's `composer.json`:
-   ```json
+
+    ```json
    {
      "require-dev": {
        "wp-cli/erase-personal-data": "dev-main"
@@ -57,6 +72,7 @@ For testing in a specific WordPress installation:
 2. Run `composer install`
 
 3. Create `wp-cli.yml` in your WordPress root:
+
    ```yaml
    require:
      - vendor/wp-cli/erase-personal-data/command.php
@@ -71,9 +87,10 @@ For testing in a specific WordPress installation:
 
 ## Multisite Support
 
-✅ **Fully multisite-compatible!** 
+✅ **Fully multisite-compatible!**
 
 When running on a WordPress multisite network:
+
 - **User data** is only anonymized for users who belong to the current site
 - **Plugin data** (WooCommerce, forms, etc.) is site-specific by default
 - **Comments** are already site-specific in WordPress multisite
@@ -88,7 +105,9 @@ wp --url=site2.example.com erase-personal-data run --dry-run
 wp --url=2 erase-personal-data run --dry-run
 ```
 
-**Note:** In multisite, users are shared across the network. The command intelligently detects which users belong to the current site by checking their capabilities meta key for that site.
+At runtime, the command reports whether it detected single site or multisite and, on multisite, which site URL/ID is being modified. If you’re on the main site without `--url`, it suggests using `--url=<site>` and `wp site list` to discover site URLs.
+
+**Note:** In multisite, users are shared across the network. The command intelligently targets only users associated with the current site.
 
 ## Usage
 
@@ -100,26 +119,34 @@ wp erase-personal-data run [--yes] [--dry-run] [--skip-forms]
 
 ### Parameters
 
+ 
+
 #### `--yes` (optional)
+
 Skip the confirmation prompt and proceed with data erasure immediately.
 
 **Example:**
+
 ```bash
 wp erase-personal-data run --yes
 ```
 
 #### `--dry-run` (optional)
+
 Preview what would be erased without making any actual changes to the database. Useful for testing before running the actual command.
 
 **Example:**
+
 ```bash
 wp erase-personal-data run --dry-run
 ```
 
 #### `--skip-forms` (optional)
+
 Skip erasing form submissions (Gravity Forms, WPForms, Ninja Forms, Contact Form 7). Only erase other personal data like user info, comments, etc.
 
 **Example:**
+
 ```bash
 wp erase-personal-data run --skip-forms
 ```
@@ -127,26 +154,31 @@ wp erase-personal-data run --skip-forms
 ### Usage Examples
 
 **Run with confirmation prompt (safest):**
+
 ```bash
 wp erase-personal-data run
 ```
 
 **Preview what would be erased:**
+
 ```bash
 wp erase-personal-data run --dry-run
 ```
 
 **Run without confirmation:**
+
 ```bash
 wp erase-personal-data run --yes
 ```
 
 **Erase data but preserve form submissions:**
+
 ```bash
 wp erase-personal-data run --skip-forms
 ```
 
 **Combine flags - preview and skip forms:**
+
 ```bash
 wp erase-personal-data run --dry-run --skip-forms
 ```
@@ -165,33 +197,47 @@ wp erase-personal-data run --dry-run --skip-forms
 - Session tokens
 - User registration IPs
 
+### Pronamic Pay
+
+- Deletes all `pronamic_payment` custom post type posts (removes any JSON with personal data in `post_content`)
+- Automatically cleans up related post meta
+- Keeps the separate `wp_pronamic_pay_payments` table but anonymizes customer fields (names, email, phone, address)
+
+This approach is simpler, faster, and ensures no residual personal data remains inside payment post JSON while preserving essential payment records in the dedicated table.
+
 ### Supported Plugins (20+)
 
 The command automatically detects installed plugins and sanitizes their data:
 
+
 **E-commerce:**
+
 - WooCommerce (customers, orders, billing, shipping, subscriptions)
 - Easy Digital Downloads
 - Pronamic Pay
 
 **Forms:**
+
 - Contact Form 7 (Flamingo)
 - Gravity Forms (modern & legacy tables)
 - Ninja Forms
 - WPForms
 
 **Membership:**
+
 - MemberPress
 - BuddyPress/BuddyBoss
 - WP User Manager
 - bbPress
 
 **Email Marketing:**
+
 - Newsletter
 - MailPoet
 - WP Mail SMTP Pro
 
 **Learning:**
+
 - LearnDash
 
 [See full list of supported plugins](#supported-plugins-reference)
@@ -257,7 +303,7 @@ To add support for a new plugin:
    }
    ```
 
-4. **Update the README** 
+4. **Update the README**
    - Add the plugin to the supported plugins list
    - Document what data gets sanitized
 
@@ -327,6 +373,7 @@ if ( $this->table_exists( $custom_plugin_users ) ) {
 ### Database Import Fails
 
 **Error**: Import failed with error code
+
 - Check MySQL credentials in `wp-config.php`
 - Ensure SQL file is not corrupted
 - Verify MySQL user has sufficient privileges (CREATE, INSERT, UPDATE, DELETE)
@@ -358,7 +405,7 @@ if ( $this->table_exists( $custom_plugin_users ) ) {
 |--------|---------------------|
 | **WooCommerce** | Customers, orders, billing addresses, shipping addresses, phone numbers, subscriptions |
 | **Easy Digital Downloads** | Customer names and emails |
-| **Pronamic Pay** | Customer names, emails, phone numbers, addresses (table & post meta) |
+| **Pronamic Pay** | Deletes `pronamic_payment` posts; anonymizes `wp_pronamic_pay_payments` customer fields |
 | **Contact Form 7** (Flamingo) | All form submissions (deleted) |
 | **Gravity Forms** | Entry IPs, user agents, all form field values (modern & legacy tables) |
 | **Ninja Forms** | All submissions (deleted) |
