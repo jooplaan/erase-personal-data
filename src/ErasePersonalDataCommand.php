@@ -70,16 +70,24 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
 
         // Array of queries to erase personal data
         $queries = $this->get_sanitization_queries();
+        $total = count( $queries );
+        $current = 0;
 
         foreach ( $queries as $description => $query ) {
-            WP_CLI::log( "  - {$description}" );
+            $current++;
+            $progress = sprintf( '[%d/%d]', $current, $total );
+            
+            WP_CLI::log( "{$progress} {$description}" );
             
             if ( $dry_run ) {
-                // In dry-run mode, just show what would be affected
-                $count_query = preg_replace( '/^(UPDATE|DELETE FROM)\s+/i', 'SELECT COUNT(*) FROM ', $query );
-                $count_query = preg_replace( '/\s+SET\s+.*/i', '', $count_query );
+                // In dry-run mode, estimate how many rows would be affected
+                $count = $this->estimate_affected_rows( $query );
                 
-                WP_CLI::log( "    [DRY RUN] Would affect rows (estimate)" );
+                if ( $count === false ) {
+                    WP_CLI::log( "    [DRY RUN] Unable to estimate affected rows" );
+                } else {
+                    WP_CLI::log( "    [DRY RUN] Would affect approximately {$count} rows" );
+                }
             } else {
                 // Actually execute the query
                 $result = $wpdb->query( $query );
@@ -91,6 +99,34 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
                 }
             }
         }
+    }
+
+    /**
+     * Estimate how many rows would be affected by a query.
+     *
+     * @param string $query The SQL query to analyze.
+     * @return int|false The estimated row count or false on failure.
+     */
+    private function estimate_affected_rows( $query ) {
+        global $wpdb;
+
+        // Extract table name and WHERE clause from UPDATE queries
+        if ( preg_match( '/UPDATE\s+(\S+)\s+SET\s+.*?(WHERE\s+.*)?$/is', $query, $matches ) ) {
+            $table = $matches[1];
+            $where = isset( $matches[2] ) ? $matches[2] : '';
+            $count_query = "SELECT COUNT(*) FROM {$table} {$where}";
+            return (int) $wpdb->get_var( $count_query );
+        }
+
+        // Extract table name and WHERE clause from DELETE queries
+        if ( preg_match( '/DELETE\s+FROM\s+(\S+)\s*(WHERE\s+.*)?$/is', $query, $matches ) ) {
+            $table = $matches[1];
+            $where = isset( $matches[2] ) ? $matches[2] : '';
+            $count_query = "SELECT COUNT(*) FROM {$table} {$where}";
+            return (int) $wpdb->get_var( $count_query );
+        }
+
+        return false;
     }
 
     /**
