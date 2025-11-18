@@ -1,16 +1,17 @@
 # WP-CLI Erase Personal Data Command
 
-A comprehensive WP-CLI command for importing a database, sanitizing personal data from WordPress core and 20+ popular plugins, and optionally deleting the source SQL file.
+A comprehensive WP-CLI command for sanitizing personal data from WordPress core and 20+ popular plugins directly in your current WordPress database.
 
 ## What It Does
 
-This command helps you safely sanitize production databases for development/staging environments by:
+This command helps you safely sanitize your WordPress database by:
 
-1. **Importing** an SQL database file into WordPress
-2. **Anonymizing** personal data from WordPress core and popular plugins
-3. **Optionally deleting** the source SQL file
+1. **Anonymizing** personal data from WordPress core
+2. **Sanitizing** data from 20+ popular plugins
+3. **Optionally skipping** form submissions if needed
+4. **Preview mode** to see what would be changed before making changes
 
-Perfect for GDPR compliance, creating safe development environments, and client handoffs.
+Perfect for GDPR compliance, creating safe development environments from production data, and preparing databases for client handoffs.
 
 ## Installation
 
@@ -73,56 +74,60 @@ For testing in a specific WordPress installation:
 ### Basic Command
 
 ```bash
-wp erase-personal-data import <file> [--delete-file] [--keep-file]
+wp erase-personal-data run [--yes] [--dry-run] [--skip-forms]
 ```
 
 ### Parameters
 
-#### `<file>` (required)
-Path to the SQL database file to import.
+#### `--yes` (optional)
+Skip the confirmation prompt and proceed with data erasure immediately.
 
 **Example:**
 ```bash
-wp erase-personal-data import /path/to/database.sql
+wp erase-personal-data run --yes
 ```
 
-#### `--delete-file` (optional)
-Automatically delete the source SQL file after successful import and sanitization, without prompting.
+#### `--dry-run` (optional)
+Preview what would be erased without making any actual changes to the database. Useful for testing before running the actual command.
 
 **Example:**
 ```bash
-wp erase-personal-data import database.sql --delete-file
+wp erase-personal-data run --dry-run
 ```
 
-#### `--keep-file` (optional)
-Keep the source SQL file after import, without prompting.
+#### `--skip-forms` (optional)
+Skip erasing form submissions (Gravity Forms, WPForms, Ninja Forms, Contact Form 7). Only erase other personal data like user info, comments, etc.
 
 **Example:**
 ```bash
-wp erase-personal-data import database.sql --keep-file
-```
-
-#### Default Behavior (no flags)
-If neither `--delete-file` nor `--keep-file` is specified, you'll be prompted:
-```
-Delete the source SQL file 'database.sql'? [y/N]:
+wp erase-personal-data run --skip-forms
 ```
 
 ### Usage Examples
 
-**Import and be prompted about file deletion:**
+**Run with confirmation prompt (safest):**
 ```bash
-wp erase-personal-data import production-backup.sql
+wp erase-personal-data run
 ```
 
-**Import and automatically delete the source file:**
+**Preview what would be erased:**
 ```bash
-wp erase-personal-data import production-backup.sql --delete-file
+wp erase-personal-data run --dry-run
 ```
 
-**Import and keep the source file:**
+**Run without confirmation:**
 ```bash
-wp erase-personal-data import production-backup.sql --keep-file
+wp erase-personal-data run --yes
+```
+
+**Erase data but preserve form submissions:**
+```bash
+wp erase-personal-data run --skip-forms
+```
+
+**Combine flags - preview and skip forms:**
+```bash
+wp erase-personal-data run --dry-run --skip-forms
 ```
 
 ## What Data Gets Sanitized
@@ -191,10 +196,13 @@ The command automatically detects installed plugins and sanitizes their data:
 # 1. Backup current database
 wp db export backup-$(date +%Y%m%d).sql
 
-# 2. Import and sanitize production database
-wp erase-personal-data import production.sql --delete-file
+# 2. Preview what will be erased (dry run)
+wp erase-personal-data run --dry-run
 
-# 3. Verify results
+# 3. Run the sanitization
+wp erase-personal-data run --yes
+
+# 4. Verify results
 wp db query "SELECT user_email FROM wp_users LIMIT 5"
 ```
 
