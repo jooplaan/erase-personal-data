@@ -25,7 +25,7 @@ Perfect for GDPR compliance, creating safe development environments from product
 ### Method 1: Install stable release (Recommended)
 
 ```bash
-wp package install https://github.com/jooplaan/erase-personal-data.git
+wp package install jooplaan/erase-personal-data:1.5.2
 ```
 
 Or install latest from the main branch (for testing):
@@ -34,10 +34,14 @@ Or install latest from the main branch (for testing):
 wp package install jooplaan/erase-personal-data:dev-main
 ```
 
-If your environment presumes a master branch or hits GitHub API limits, use the direct URL fallback:
+If GitHub API rate limits occur, you can also use:
 
 ```bash
-wp package install https://github.com/jooplaan/erase-personal-data.git
+# Clear any cached repository data first
+rm -rf ~/Library/Caches/composer/vcs/git-github.com-jooplaan-erase-personal-data.git
+
+# Then install
+wp package install jooplaan/erase-personal-data:1.5.1
 ```
 
 ### Method 2: Manual Installation
