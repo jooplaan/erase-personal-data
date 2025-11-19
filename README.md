@@ -98,7 +98,7 @@ wp erase-personal-data run --dry-run --skip-forms
 ### Method 1: Install stable release (Recommended)
 
 ```bash
-wp package install jooplaan/erase-personal-data:1.5.4
+wp package install jooplaan/erase-personal-data:1.5.5
 ```
 
 Or install latest from the main branch (for testing):
