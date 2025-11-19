@@ -409,19 +409,26 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
 
         // WooCommerce customer billing/shipping addresses (user meta)
         $usermeta_table = $wpdb->usermeta;
-        $queries['Anonymize WooCommerce customer billing addresses'] = "
+        $queries['Anonymize WooCommerce customer billing info'] = "
             UPDATE {$usermeta_table}
             SET meta_value = ''
             WHERE meta_key IN (
+                'billing_first_name', 'billing_last_name',
                 'billing_address_1', 'billing_address_2', 'billing_city',
                 'billing_state', 'billing_postcode', 'billing_country',
                 'billing_company', 'billing_phone'
             )
         ";
-        $queries['Anonymize WooCommerce customer shipping addresses'] = "
+        $queries['Anonymize WooCommerce customer billing email'] = "
+            UPDATE {$usermeta_table}
+            SET meta_value = 'anonymous@example.com'
+            WHERE meta_key = 'billing_email'
+        ";
+        $queries['Anonymize WooCommerce customer shipping info'] = "
             UPDATE {$usermeta_table}
             SET meta_value = ''
             WHERE meta_key IN (
+                'shipping_first_name', 'shipping_last_name',
                 'shipping_address_1', 'shipping_address_2', 'shipping_city',
                 'shipping_state', 'shipping_postcode', 'shipping_country',
                 'shipping_company', 'shipping_phone'
