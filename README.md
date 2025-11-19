@@ -13,81 +13,13 @@ This command helps you safely sanitize your WordPress database by:
 
 Perfect for GDPR compliance, creating safe development environments from production data, and preparing databases for client handoffs.
 
+
 ## Requirements
 
 - PHP 7.4 or higher
 - WP-CLI installed
 - MySQL/MariaDB command-line tools
 - WordPress installation (single site or multisite)
-
-## Installation
-
-### Method 1: Install stable release (Recommended)
-
-```bash
-wp package install jooplaan/erase-personal-data:1.5.3
-```
-
-Or install latest from the main branch (for testing):
-
-```bash
-wp package install jooplaan/erase-personal-data:dev-main
-```
-
-If GitHub API rate limits occur, you can also use:
-
-```bash
-# Clear any cached repository data first
-rm -rf ~/Library/Caches/composer/vcs/git-github.com-jooplaan-erase-personal-data.git
-
-# Then install
-wp package install jooplaan/erase-personal-data:1.5.1
-```
-
-### Method 2: Manual Installation
-
-1. Clone this repository:
-
-   ```bash
-   git clone https://github.com/jooplaan/erase-personal-data.git
-   cd erase-personal-data
-   ```
-
-2. Install to WP-CLI packages directory:
-
-   ```bash
-   mkdir -p ~/.wp-cli/packages
-   ln -s $(pwd) ~/.wp-cli/packages/erase-personal-data
-   ```
-
-### Method 3: Local Development
-
-For testing in a specific WordPress installation:
-
-1. Add to your project's `composer.json`:
-
-    ```json
-   {
-     "require-dev": {
-       "wp-cli/erase-personal-data": "dev-main"
-     },
-     "repositories": [
-       {
-         "type": "vcs",
-         "url": "https://github.com/jooplaan/erase-personal-data.git"
-       }
-     ]
-   }
-   ```
-
-2. Run `composer install`
-
-3. Create `wp-cli.yml` in your WordPress root:
-
-   ```yaml
-   require:
-     - vendor/wp-cli/erase-personal-data/command.php
-   ```
 
 ## Usage
 
@@ -160,6 +92,75 @@ wp erase-personal-data run --skip-forms
 ```bash
 wp erase-personal-data run --dry-run --skip-forms
 ```
+
+## Installation
+
+### Method 1: Install stable release (Recommended)
+
+```bash
+wp package install jooplaan/erase-personal-data:1.5.4
+```
+
+Or install latest from the main branch (for testing):
+
+```bash
+wp package install jooplaan/erase-personal-data:dev-main
+```
+
+If GitHub API rate limits occur, you can also use:
+
+```bash
+# Clear any cached repository data first
+rm -rf ~/Library/Caches/composer/vcs/git-github.com-jooplaan-erase-personal-data.git
+
+# Then install
+wp package install jooplaan/erase-personal-data:1.5.1
+```
+
+### Method 2: Manual Installation
+
+1. Clone this repository:
+
+   ```bash
+   git clone https://github.com/jooplaan/erase-personal-data.git
+   cd erase-personal-data
+   ```
+
+2. Install to WP-CLI packages directory:
+
+   ```bash
+   mkdir -p ~/.wp-cli/packages
+   ln -s $(pwd) ~/.wp-cli/packages/erase-personal-data
+   ```
+
+### Method 3: Local Development
+
+For testing in a specific WordPress installation:
+
+1. Add to your project's `composer.json`:
+
+    ```json
+   {
+     "require-dev": {
+       "wp-cli/erase-personal-data": "dev-main"
+     },
+     "repositories": [
+       {
+         "type": "vcs",
+         "url": "https://github.com/jooplaan/erase-personal-data.git"
+       }
+     ]
+   }
+   ```
+
+2. Run `composer install`
+
+3. Create `wp-cli.yml` in your WordPress root:
+
+   ```yaml
+   require:
+     - vendor/wp-cli/erase-personal-data/command.php
+   ```
 
 ## Multisite Support
 
@@ -301,7 +302,7 @@ To add support for a new plugin:
    - Find tables/fields containing personal data
 
 3. **Add sanitization queries** in `src/ErasePersonalDataCommand.php`
-   
+
    Add your queries in the `get_sanitization_queries()` method:
 
    ```php
@@ -370,7 +371,7 @@ if ( $this->table_exists( $custom_plugin_users ) ) {
         UPDATE {$custom_plugin_users}
         SET email = CONCAT('user', id, '@example.com')
     ";
-    
+
     // Clear personal details
     $queries['Clear Custom Plugin personal details'] = "
         UPDATE {$custom_plugin_users}
