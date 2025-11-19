@@ -407,6 +407,27 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
             ";
         }
 
+        // WooCommerce customer billing/shipping addresses (user meta)
+        $usermeta_table = $wpdb->usermeta;
+        $queries['Anonymize WooCommerce customer billing addresses'] = "
+            UPDATE {$usermeta_table}
+            SET meta_value = ''
+            WHERE meta_key IN (
+                'billing_address_1', 'billing_address_2', 'billing_city',
+                'billing_state', 'billing_postcode', 'billing_country',
+                'billing_company', 'billing_phone'
+            )
+        ";
+        $queries['Anonymize WooCommerce customer shipping addresses'] = "
+            UPDATE {$usermeta_table}
+            SET meta_value = ''
+            WHERE meta_key IN (
+                'shipping_address_1', 'shipping_address_2', 'shipping_city',
+                'shipping_state', 'shipping_postcode', 'shipping_country',
+                'shipping_company', 'shipping_phone'
+            )
+        ";
+
         // WooCommerce order billing/shipping addresses
         $postmeta_table = $wpdb->postmeta;
         $queries['Anonymize WooCommerce order billing names'] = "
@@ -428,7 +449,7 @@ class ErasePersonalDataCommand extends WP_CLI_Command {
             UPDATE {$postmeta_table}
             SET meta_value = ''
             WHERE meta_key IN (
-                '_billing_address_1', '_billing_address_2', '_billing_city', 
+                '_billing_address_1', '_billing_address_2', '_billing_city',
                 '_billing_state', '_billing_postcode', '_billing_country',
                 '_shipping_address_1', '_shipping_address_2', '_shipping_city',
                 '_shipping_state', '_shipping_postcode', '_shipping_country',
