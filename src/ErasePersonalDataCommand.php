@@ -802,18 +802,12 @@ class ErasePersonalDataCommand extends WP_CLI_Command
         ];
         $sensitive_keys_sql = "'" . implode("','", $sensitive_keys) . "'";
 
-        /**
-         * Posts content
-         */
         $queries['Redact Flamingo post_content'] = "
         UPDATE {$wpdb->posts}
         SET post_content = '[REDACTED]'
         WHERE post_type IN ($post_types_sql)
     ";
 
-        /**
-         * Identity meta replacement (email fields)
-         */
         $queries['Anonymize Flamingo identity meta'] = "
         UPDATE {$wpdb->postmeta} pm
         INNER JOIN {$wpdb->posts} p ON pm.post_id = p.ID
@@ -822,9 +816,6 @@ class ErasePersonalDataCommand extends WP_CLI_Command
           AND p.post_type IN ($post_types_sql)
     ";
 
-        /**
-         * Name fields
-         */
         $queries['Redact Flamingo name fields'] = "
         UPDATE {$wpdb->postmeta} pm
         INNER JOIN {$wpdb->posts} p ON pm.post_id = p.ID
@@ -833,9 +824,6 @@ class ErasePersonalDataCommand extends WP_CLI_Command
           AND p.post_type IN ($post_types_sql)
     ";
 
-        /**
-         * Sensitive meta
-         */
         $queries['Redact Flamingo sensitive meta'] = "
         UPDATE {$wpdb->postmeta} pm
         INNER JOIN {$wpdb->posts} p ON pm.post_id = p.ID
@@ -844,17 +832,11 @@ class ErasePersonalDataCommand extends WP_CLI_Command
           AND p.post_type IN ($post_types_sql)
     ";
 
-        /**
-         * Users
-         */
         $queries['Anonymize user emails'] = "
         UPDATE {$wpdb->users}
         SET user_email = CONCAT('user', ID, '@example.com')
     ";
 
-        /**
-         * Comments
-         */
         $queries['Anonymize comment emails'] = "
         UPDATE {$wpdb->comments}
         SET comment_author_email = CONCAT('user', comment_ID, '@example.com')
@@ -862,95 +844,6 @@ class ErasePersonalDataCommand extends WP_CLI_Command
 
         return $queries;
     }
-    // private function get_flamingo_sanitization_queries($skip_forms = false)
-    // {
-    //     global $wpdb;
-
-    //     $queries = [];
-
-    //     if ($skip_forms) {
-    //         return $queries;
-    //     }
-
-    //     $post_types = ['flamingo_contact', 'flamingo_inbound'];
-    //     $post_types_sql = "'" . implode("','", $post_types) . "'";
-
-    //     $queries['Redact post_content'] = "
-    //     UPDATE {$wpdb->posts}
-    //     SET post_content = '[REDACTED]'
-    //     WHERE post_type IN ($post_types_sql)
-    // ";
-
-    //     $identity_keys = [
-    //         '_from_email',
-    //         '_email',
-    //         '_field_your-email',
-    //         '_from'
-    //     ];
-    //     $identity_keys_sql = "'" . implode("','", $identity_keys) . "'";
-
-    //     $queries['Anonymize identity meta'] = "
-    //     UPDATE {$wpdb->postmeta} pm
-    //     INNER JOIN {$wpdb->posts} p ON pm.post_id = p.ID
-    //     SET pm.meta_value = CONCAT('user', pm.post_id, '@example.com')
-    //     WHERE pm.meta_key IN ($identity_keys_sql)
-    //       AND p.post_type IN ($post_types_sql)
-    // ";
-
-    //     $name_keys = [
-    //         '_from_name',
-    //         '_name',
-    //         '_field_your-name'
-    //     ];
-    //     $name_keys_sql = "'" . implode("','", $name_keys) . "'";
-
-    //     $queries['Redact name fields'] = "
-    //     UPDATE {$wpdb->postmeta} pm
-    //     INNER JOIN {$wpdb->posts} p ON pm.post_id = p.ID
-    //     SET pm.meta_value = '[REDACTED]'
-    //     WHERE pm.meta_key IN ($name_keys_sql)
-    //       AND p.post_type IN ($post_types_sql)
-    // ";
-
-    //     $sensitive_keys = [
-    //         '_field_your-message',
-    //         '_field_initialen',
-    //         '_field_achternaam',
-    //         '_field_geboortedatum',
-    //         '_field_geslacht',
-    //         '_field_bsn',
-    //         '_field_straatnaam',
-    //         '_field_huisnr',
-    //         '_field_toevoeging',
-    //         '_field_postcode',
-    //         '_field_plaats',
-    //         '_field_telefoonnummer',
-    //         '_field_mobile',
-    //         '_field_visit_dentist',
-    //         '_field_note'
-    //     ];
-    //     $sensitive_keys_sql = "'" . implode("','", $sensitive_keys) . "'";
-
-    //     $queries['Redact sensitive meta'] = "
-    //     UPDATE {$wpdb->postmeta} pm
-    //     INNER JOIN {$wpdb->posts} p ON pm.post_id = p.ID
-    //     SET pm.meta_value = '[REDACTED]'
-    //     WHERE pm.meta_key IN ($sensitive_keys_sql)
-    //       AND p.post_type IN ($post_types_sql)
-    // ";
-
-    //     $queries['Anonymize user emails'] = "
-    //     UPDATE {$wpdb->users}
-    //     SET user_email = CONCAT('user', ID, '@example.com')
-    // ";
-
-    //     $queries['Anonymize comment emails'] = "
-    //     UPDATE {$wpdb->comments}
-    //     SET comment_author_email = CONCAT('user', comment_ID, '@example.com')
-    // ";
-
-    //     return $queries;
-    // }
 
     /**
      * Check if a database table exists.
@@ -964,5 +857,4 @@ class ErasePersonalDataCommand extends WP_CLI_Command
         $result = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table_name));
         return $result === $table_name;
     }
-
 }
