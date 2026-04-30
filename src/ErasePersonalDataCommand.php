@@ -301,7 +301,7 @@ class ErasePersonalDataCommand extends WP_CLI_Command
      * @param bool $skip_forms Whether to skip form submission erasure.
      * @return array Associative array of description => SQL query.
      */
-    private function get_sanitization_queries($skip_forms = false, $dry_run = false)
+    private function get_sanitization_queries($skip_forms = false)
     {
         global $wpdb;
 
@@ -473,7 +473,6 @@ class ErasePersonalDataCommand extends WP_CLI_Command
         // Contact Form 7 - Flamingo plugin (stores form submissions)
         if (!$skip_forms) {
             $queries += $this->get_flamingo_sanitization_queries($skip_forms);
-            return $queries;
         }
 
         // Gravity Forms entries

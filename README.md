@@ -330,6 +330,21 @@ To add support for a new plugin:
    - Clear description of what plugin support was added
    - Explain what data is being sanitized
 
+### Run local version of this repository (overwrite global installed version)
+
+Navigate to your wordpress project
+
+```bash
+wp package install /path to your local erase personal data installation
+```
+
+### Uninstall the local project and install global project again
+
+```bash
+wp package uninstall jooplaan/erase-personal-data
+wp package install jooplaan/erase-personal-data
+```
+
 ### Anonymization Patterns
 
 Follow these patterns for consistency:
